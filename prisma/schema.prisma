@@ -1,0 +1,113 @@
+// Prisma 7 schema — connection URL is configured in prisma.config.ts
+
+generator client {
+  provider      = "prisma-client-js"
+  engineType    = "library"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int          @id @default(autoincrement())
+  email     String       @unique
+  name      String?
+  profile   UserProfile?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model UserProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio             String   @default("")
+  primaryDomain   String   @default("")
+  skills          String[] @default([])
+  experienceYears Int      @default(0)
+  educationLevel  String   @default("")
+  currentCvUrl    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  matches         AIMatchResult[]
+
+  @@index([primaryDomain])
+  @@index([skills])
+}
+
+model JobOpportunity {
+  id                  Int       @id @default(autoincrement())
+  externalId          String?   @unique
+  sourceUrl           String?
+  title               String
+  company             String
+  location            String    @default("")
+  country             String
+  description         String
+  requirements        String[]  @default([])
+  tags                String[]  @default([])
+  salaryRange         String?
+  applicationDeadline DateTime?
+  isRemote            Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  matches             AIMatchResult[]
+
+  @@index([country])
+  @@index([company])
+  @@index([title])
+  @@index([tags])
+  @@index([requirements])
+  @@index([isRemote])
+}
+
+model ScholarshipOpportunity {
+  id                  Int       @id @default(autoincrement())
+  externalId          String?   @unique
+  sourceUrl           String?
+  title               String
+  university          String
+  country             String
+  degreeLevel         String    @default("Masters")
+  coverage            String    @default("Partial")
+  benefits            String    @default("")
+  requirements        String[]  @default([])
+  tags                String[]  @default([])
+  applicationDeadline DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  matches             AIMatchResult[]
+
+  @@index([country])
+  @@index([university])
+  @@index([tags])
+  @@index([requirements])
+}
+
+model PremiumPin {
+  id        Int      @id @default(autoincrement())
+  pin       String   @unique
+  used      Boolean  @default(false)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model AIMatchResult {
+  id              Int                     @id @default(autoincrement())
+  userId          Int
+  userProfile     UserProfile             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId           Int?
+  job             JobOpportunity?         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  scholarshipId   Int?
+  scholarship     ScholarshipOpportunity? @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  matchPercentage Int
+  matchReason     String                  @default("")
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([scholarshipId])
+}
