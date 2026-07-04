@@ -4,8 +4,8 @@
  * Automated job & scholarship ingestion pipeline.
  * Triggered once every 24 hours by Vercel Cron or cron-job.org.
  *
- * Security: requires Authorization: Bearer <CRON_SECRET> header
- *           OR ?secret=<CRON_SECRET> query param.
+ * Security: requires Authorization: Bearer <APP_CRON_KEY> header
+ *           OR ?secret=<APP_CRON_KEY> query param.
  *
  * Sources
  *   Jobs        → RemoteOK API · Arbeitnow API · Remotive API  (all free, no auth)
@@ -18,7 +18,7 @@ import { sql } from "@/lib/db";
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
+  const secret = process.env.APP_CRON_KEY;
   if (!secret) return true; // Dev mode: allow when secret not configured
 
   const authHeader = req.headers.get("authorization");
@@ -615,7 +615,7 @@ export async function GET(req: NextRequest) {
   // ── Auth guard ────────────────────────────────────────────────────────────
   if (!isAuthorized(req)) {
     return Response.json(
-      { error: "Unauthorized — provide a valid CRON_SECRET." },
+      { error: "Unauthorized — provide a valid APP_CRON_KEY." },
       { status: 401 },
     );
   }
