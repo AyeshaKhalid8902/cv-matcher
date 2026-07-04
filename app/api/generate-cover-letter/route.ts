@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = (process.env.GROQ_API_KEY ?? "").replace(/﻿/g, "").trim();
     if (!apiKey || apiKey.includes("your-groq-key")) {
       return Response.json(
         { error: "Groq API key not configured. Add GROQ_API_KEY to .env.local" },
