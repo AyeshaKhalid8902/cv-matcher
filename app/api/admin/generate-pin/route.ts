@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 function randomPin() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }

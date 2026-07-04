@@ -1,4 +1,5 @@
 export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";

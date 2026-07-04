@@ -1,9 +1,22 @@
 import postgres from "postgres";
 
-const globalForSql = globalThis as unknown as { sql: ReturnType<typeof postgres> | undefined };
+type Sql = ReturnType<typeof postgres>;
 
-export const sql =
-  globalForSql.sql ??
-  postgres(process.env.DATABASE_URL!, { ssl: "require", max: 5 });
+const g = globalThis as unknown as { _pgSql: Sql | undefined };
 
-if (process.env.NODE_ENV !== "production") globalForSql.sql = sql;
+function getClient(): Sql {
+  if (!g._pgSql) {
+    g._pgSql = postgres(process.env.DATABASE_URL!, { ssl: "require", max: 5 });
+  }
+  return g._pgSql;
+}
+
+// Lazy proxy — defers the postgres() call (and URL validation) until first use
+export const sql: Sql = new Proxy(function () {} as unknown as Sql, {
+  apply(_t, _this, args) {
+    return (getClient() as unknown as (...a: unknown[]) => unknown).apply(_this, args);
+  },
+  get(_t, prop) {
+    return (getClient() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+}) as Sql;

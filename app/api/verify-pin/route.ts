@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   const { pin } = (await req.json()) as { pin?: string };
   if (!pin?.trim()) return Response.json({ success: false, error: "PIN is required." }, { status: 400 });

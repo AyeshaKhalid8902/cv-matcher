@@ -1,5 +1,7 @@
 import Stripe from "stripe";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const key = process.env.STRIPE_TEST_SECRET_KEY;
   if (!key) {
