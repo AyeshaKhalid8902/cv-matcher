@@ -150,8 +150,22 @@ ${cvText.slice(0, 4500)}`;
   return result;
 }
 
-// ── PDF extraction via pdf2json ───────────────────────────────────────────────
+// ── PDF extraction — tries pdf-parse first, falls back to pdf2json ────────────
 async function extractPdfText(buffer: Buffer): Promise<string> {
+  // Attempt 1: pdf-parse (simpler, works reliably in serverless)
+  try {
+    // Import the library directly to avoid its test-file check
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (
+      buf: Buffer
+    ) => Promise<{ text: string }>;
+    const result = await pdfParse(buffer);
+    if (result.text && result.text.trim().length > 20) return result.text;
+  } catch {
+    // fall through to pdf2json
+  }
+
+  // Attempt 2: pdf2json (EventEmitter-based, handles some PDFs pdf-parse misses)
   const { default: PDFParser } = await import("pdf2json");
 
   return new Promise<string>((resolve, reject) => {
