@@ -2,7 +2,7 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+const GROQ_MODEL = (process.env.GROQ_MODEL || "llama-3.1-8b-instant").replace(/﻿/g, "").trim();
 
 type ParsedCV = {
   primaryDomain: string;
@@ -64,7 +64,7 @@ async function groqFetch(body: object, apiKey: string, retries = 3): Promise<Res
 
 // ── Single Groq call — returns everything at once ─────────────────────────────
 async function analyzeCV(cvText: string): Promise<GroqResult> {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = (process.env.GROQ_API_KEY ?? "").replace(/﻿/g, "").trim();
   if (!apiKey || apiKey.includes("your-groq-key")) {
     throw new Error("Groq API key missing. Add GROQ_API_KEY to .env.local — get it free at https://console.groq.com");
   }
