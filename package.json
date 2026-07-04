@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
@@ -22,6 +22,7 @@
     "next": "^16.2.9",
     "pdf-parse": "^1.1.1",
     "pdf2json": "^4.0.3",
+    "postgres": "^3.4.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "stripe": "^22.3.0"
