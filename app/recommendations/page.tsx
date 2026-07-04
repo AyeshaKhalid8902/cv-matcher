@@ -286,7 +286,7 @@ function UpgradeModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: ()
             value={pin}
             onChange={e => { setPin(e.target.value); setPinError(""); }}
             onKeyDown={e => e.key === "Enter" && handleActivate()}
-            placeholder="Enter PIN (e.g. 2801)"
+            placeholder="Enter your PIN"
             style={{
               width: "100%", padding: "13px 16px", boxSizing: "border-box" as const,
               border: `1.5px solid ${pinError ? "#FDA4AF" : C.border}`, borderRadius: 12,
