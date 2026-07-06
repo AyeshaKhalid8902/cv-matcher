@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const GROQ_MODEL = (process.env.GROQ_MODEL || "llama-3.1-8b-instant").replace(/﻿/g, "").trim();
+const GROQ_MODEL = (process.env.GROQ_MODEL || "gemma2-9b-it").replace(/﻿/g, "").trim();
 
 type Profile = {
   primaryDomain:   string;

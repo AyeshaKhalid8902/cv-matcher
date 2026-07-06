@@ -2,7 +2,7 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 
-const GROQ_MODEL = (process.env.GROQ_MODEL || "llama-3.1-8b-instant").replace(/﻿/g, "").trim();
+const GROQ_MODEL = (process.env.GROQ_MODEL || "gemma2-9b-it").replace(/﻿/g, "").trim();
 
 type ParsedCV = {
   primaryDomain: string;
@@ -69,65 +69,20 @@ async function analyzeCV(cvText: string): Promise<GroqResult> {
     throw new Error("Groq API key missing. Add GROQ_API_KEY to .env.local — get it free at https://console.groq.com");
   }
 
-  const prompt = `You are a CV analysis expert. Analyze the CV text below and return ONE valid JSON object only. No markdown, no explanation.
+  const prompt = `Analyze this CV. Return ONLY a JSON object, no markdown.
 
-Return this exact structure:
-{
-  "profile": {
-    "primaryDomain": "main professional field",
-    "skills": ["skill1", "skill2"],
-    "experienceYears": 0,
-    "educationLevel": "highest degree",
-    "bio": "2-sentence summary"
-  },
-  "jobs": [
-    {
-      "id": "j1",
-      "title": "job title in their field",
-      "company": "company name",
-      "location": "City, Country",
-      "salary": "salary range",
-      "description": "one sentence about the role",
-      "requiredSkills": ["skill1", "skill2"],
-      "matchScore": 85
-    }
-  ],
-  "scholarships": [
-    {
-      "id": "s1",
-      "title": "scholarship name",
-      "university": "university name",
-      "country": "country",
-      "amount": "amount or Fully Funded",
-      "description": "one sentence about it",
-      "matchScore": 80
-    }
-  ],
-  "skillGaps": [
-    {
-      "skill": "skill the person does NOT have but needs for international remote work",
-      "avgSalary": "$XX,000/year",
-      "reason": "one sentence why this skill is globally demanded in their field"
-    }
-  ]
-}
+{"profile":{"primaryDomain":"field","skills":["s1"],"experienceYears":0,"educationLevel":"degree","bio":"2 sentences"},"jobs":[{"id":"j1","title":"title","company":"company","location":"City,Country","salary":"range","description":"one sentence","requiredSkills":["s1"],"matchScore":85}],"scholarships":[{"id":"s1","title":"name","university":"uni","country":"country","amount":"Fully Funded","description":"one sentence","matchScore":80}],"skillGaps":[{"skill":"skill","avgSalary":"$XX,000/yr","reason":"why demanded"}]}
 
-Rules:
-- profile.skills: list all skills found in CV
-- jobs: exactly 5 jobs, ALL must be in the same field as the CV
-- scholarships: exactly 4 scholarships relevant to their field and education
-- skillGaps: exactly 3 high-paying skills NOT present in profile.skills, specific to their domain
-- matchScore: realistic 60-95 based on how well it fits
-- Output ONLY the JSON object
+Rules: 5 jobs in their field, 4 scholarships, 3 skill gaps not in their CV, matchScore 60-95. Output JSON only.
 
-CV Text:
-${cvText.slice(0, 4500)}`;
+CV:
+${cvText.slice(0, 3000)}`;
 
   const res = await groqFetch({
     model: GROQ_MODEL,
     messages: [{ role: "user", content: prompt }],
-    max_tokens: 1500,
-    temperature: 0.2,
+    max_tokens: 1200,
+    temperature: 0.1,
   }, apiKey);
 
   if (!res.ok) {
