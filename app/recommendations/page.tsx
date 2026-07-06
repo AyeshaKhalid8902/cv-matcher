@@ -1307,7 +1307,7 @@ function RecommendationsContent() {
 
         {/* ── Floating controls ── */}
         <button
-          onClick={() => router.push("/upload-cv")}
+          onClick={() => { sessionStorage.removeItem("cv_data"); router.push("/upload-cv"); }}
           className="fixed z-50 bg-white/80 backdrop-blur-md border border-[#E2E1F5] text-[#1E1B4B] rounded-full font-medium shadow-sm transition-all hover:bg-white"
           style={{ cursor: "pointer", top: isMobile ? 12 : 22, left: isMobile ? 12 : 22, padding: isMobile ? "6px 12px" : "8px 16px", fontSize: isMobile ? 12 : 14 }}
         >
