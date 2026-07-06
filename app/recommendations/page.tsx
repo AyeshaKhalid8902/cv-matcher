@@ -889,9 +889,11 @@ function RecommendationsContent() {
     return `${salary}  ·  PKR ${Math.round(n * 280).toLocaleString()}`;
   };
 
+  const PK_ROLLING_IDS = new Set(["hec-nb","peef","ehsaas","pm-youth","pitb-int","navttc","ignite","km-sch","aku-sch","lums-fa","iiui-sch","hec-res"]);
   const getDeadline = (id: string) => {
+    if (PK_ROLLING_IDS.has(id)) return "Open / Rolling";
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    return `${months[id.charCodeAt(0) % 12]} ${(id.charCodeAt(1) % 20) + 8}, 2025`;
+    return `${months[id.charCodeAt(0) % 12]} ${(id.charCodeAt(1) % 20) + 8}, 2026`;
   };
 
   const interviewTips = (title: string) => [
@@ -1222,13 +1224,22 @@ function RecommendationsContent() {
       <div style={{ flex: "1 1 300px", minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
           <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: C.espresso }}>{sch.title}</h2>
-          <span style={{
-            flexShrink: 0, padding: "4px 12px", borderRadius: 99,
-            backgroundColor: C.redBg, border: `1px solid ${C.redBdr}`,
-            fontSize: 11, fontWeight: 700, color: C.red, whiteSpace: "nowrap" as const,
-          }}>
-            ⏰ {t.deadline}: {getDeadline(sch.id)}
-          </span>
+          {(() => {
+            const dl = getDeadline(sch.id);
+            const isRolling = dl === "Open / Rolling";
+            return (
+              <span style={{
+                flexShrink: 0, padding: "4px 12px", borderRadius: 99,
+                backgroundColor: isRolling ? "#F0FDF4" : C.redBg,
+                border: `1px solid ${isRolling ? "#86EFAC" : C.redBdr}`,
+                fontSize: 11, fontWeight: 700,
+                color: isRolling ? "#15803D" : C.red,
+                whiteSpace: "nowrap" as const,
+              }}>
+                {isRolling ? "✅" : "⏰"} {t.deadline}: {dl}
+              </span>
+            );
+          })()}
         </div>
         <p style={{ margin: "5px 0 0", fontSize: 14, color: C.muted, fontWeight: 500 }}>
           🏛 {sch.university}&nbsp;&nbsp;·&nbsp;&nbsp;🌍 {sch.country}
