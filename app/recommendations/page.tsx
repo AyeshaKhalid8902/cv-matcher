@@ -45,6 +45,17 @@ type ModalState = {
   error:       string;
 };
 
+type GovtJob = {
+  id:           string;
+  title:        string;
+  organization: string;
+  location:     string;
+  deadline:     string;
+  applyUrl:     string;
+  source:       string;
+  jobType:      "job" | "internship";
+};
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
   espresso:  "#1E1B4B",  /* deep indigo-navy */
@@ -755,7 +766,9 @@ function RecommendationsContent() {
   const [countryFilter, setCountryFilter] = useState("all");
   const [jobs, setJobs]                 = useState<Job[]>([]);
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
-  const [activeTab, setActiveTab]       = useState<"jobs" | "scholarships">("jobs");
+  const [activeTab, setActiveTab]       = useState<"jobs" | "scholarships" | "govt">("jobs");
+  const [govtJobs, setGovtJobs]         = useState<GovtJob[]>([]);
+  const [govtLoading, setGovtLoading]   = useState(false);
   const [modal, setModal]               = useState<ModalState>({
     open: false, letter: "", jobTitle: "", company: "", loading: false, error: "",
   });
@@ -796,6 +809,18 @@ function RecommendationsContent() {
       router.push("/upload-cv");
     }
   }, [router]);
+
+  // ── Fetch live govt jobs ──────────────────────────────────────────────────────
+  useEffect(() => {
+    setGovtLoading(true);
+    fetch("/api/govt-jobs")
+      .then(r => r.json())
+      .then((data: { success: boolean; jobs?: GovtJob[] }) => {
+        if (data.success && data.jobs) setGovtJobs(data.jobs);
+      })
+      .catch(() => {})
+      .finally(() => setGovtLoading(false));
+  }, []);
 
   // ── Handle Stripe success redirect (?success=true&session_id=...) ─────────────
   useEffect(() => {
@@ -921,7 +946,7 @@ function RecommendationsContent() {
   ])].filter(Boolean).sort();
 
   // ── Tab button ────────────────────────────────────────────────────────────
-  const tabBtn = (label: string, count: number, tab: "jobs" | "scholarships", icon: string) => {
+  const tabBtn = (label: string, count: number, tab: "jobs" | "scholarships" | "govt", icon: string) => {
     const isActive = activeTab === tab;
     return (
       <button
@@ -1414,6 +1439,7 @@ function RecommendationsContent() {
             <div style={{ display: "flex", gap: 4 }}>
               {tabBtn(t.jobsTab, jobs.length, "jobs", "💼")}
               {tabBtn(t.scholTab, scholarships.length, "scholarships", "🎓")}
+              {tabBtn("🇵🇰 Govt Jobs", govtJobs.length, "govt", "🏛")}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
               {allLocations.length > 1 && (
@@ -1473,6 +1499,98 @@ function RecommendationsContent() {
                 <EmptyState label={t.noScholarships} sub={t.retry} />
               ) : (
                 displayScholarships.map(sch => <ScholarshipCard key={sch.id} sch={sch} />)
+              )}
+            </div>
+          )}
+
+          {activeTab === "govt" && (
+            <div>
+              {/* Filter bar */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" as const }}>
+                {["all", "job", "internship"].map(f => (
+                  <button key={f} id={`gf-${f}`} onClick={() => {
+                    const btns = ["all","job","internship"].map(x => document.getElementById(`gf-${x}`));
+                    btns.forEach((b,i) => {
+                      if (b) {
+                        b.style.background = ["all","job","internship"][i] === f ? "linear-gradient(135deg,#5B50F0,#7C3AED)" : "transparent";
+                        b.style.color = ["all","job","internship"][i] === f ? "#fff" : "#64748B";
+                        b.style.borderColor = ["all","job","internship"][i] === f ? "#5B50F0" : "#E2E1F5";
+                      }
+                    });
+                  }} style={{
+                    padding: "6px 16px", borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    border: `1.5px solid ${f === "all" ? "#5B50F0" : "#E2E1F5"}`,
+                    background: f === "all" ? "linear-gradient(135deg,#5B50F0,#7C3AED)" : "transparent",
+                    color: f === "all" ? "#fff" : "#64748B", transition: "all 0.2s",
+                  }}>
+                    {f === "all" ? "Sab" : f === "job" ? "Govt Jobs" : "Internships"}
+                  </button>
+                ))}
+                <span style={{ marginLeft: "auto", fontSize: 12, color: "#64748B", alignSelf: "center" }}>
+                  {govtLoading ? "Loading..." : `${govtJobs.length} listings`}
+                </span>
+              </div>
+
+              {govtLoading ? (
+                <div style={{ textAlign: "center", padding: 60, color: "#64748B" }}>
+                  <div style={{ width: 32, height: 32, border: "3px solid #E2E1F5", borderTopColor: "#5B50F0", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
+                  Live government jobs fetch ho rahi hain...
+                </div>
+              ) : govtJobs.length === 0 ? (
+                <EmptyState label="No government jobs found" sub="Try again in a moment." />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {govtJobs.map(job => (
+                    <div key={job.id} style={{
+                      backgroundColor: "#fff", borderRadius: 16,
+                      border: "1px solid #E2E1F5", padding: "20px 24px",
+                      boxShadow: "0 2px 12px rgba(30,27,75,0.05)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" as const }}>
+                        <div style={{ flex: "1 1 280px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span style={{
+                              padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                              background: job.source === "FPSC" ? "#EEF2FF" : job.source === "PPSC" ? "#F0FDF4" : job.source === "SPSC" ? "#FFF7ED" : job.source === "NTS" ? "#FDF4FF" : "#F1F5F9",
+                              color: job.source === "FPSC" ? "#4338CA" : job.source === "PPSC" ? "#15803D" : job.source === "SPSC" ? "#C2410C" : job.source === "NTS" ? "#7E22CE" : "#475569",
+                            }}>
+                              {job.source}
+                            </span>
+                            <span style={{
+                              padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600,
+                              background: job.jobType === "internship" ? "#FFF9C4" : "#F0F1FF",
+                              color: job.jobType === "internship" ? "#92400E" : "#5B50F0",
+                            }}>
+                              {job.jobType === "internship" ? "Internship" : "Full-time"}
+                            </span>
+                          </div>
+                          <h3 style={{ margin: "4px 0", fontSize: 17, fontWeight: 800, color: "#1E1B4B" }}>{job.title}</h3>
+                          <p style={{ margin: 0, fontSize: 13, color: "#64748B" }}>
+                            🏛 {job.organization} &nbsp;·&nbsp; 📍 {job.location}
+                          </p>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+                          <span style={{
+                            padding: "4px 12px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                            background: job.deadline === "Rolling" || job.deadline.includes("Rolling") ? "#F0FDF4" : "#FEF2F2",
+                            color: job.deadline === "Rolling" || job.deadline.includes("Rolling") ? "#15803D" : "#DC2626",
+                            border: `1px solid ${job.deadline === "Rolling" || job.deadline.includes("Rolling") ? "#86EFAC" : "#FECACA"}`,
+                          }}>
+                            {job.deadline === "Rolling" || job.deadline.includes("Rolling") ? "✅" : "⏰"} {job.deadline}
+                          </span>
+                          <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" style={{
+                            padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                            background: "linear-gradient(135deg,#5B50F0,#7C3AED)",
+                            color: "#fff", textDecoration: "none",
+                            boxShadow: "0 4px 12px rgba(91,80,240,0.3)",
+                          }}>
+                            Apply Now
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
