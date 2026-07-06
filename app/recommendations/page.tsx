@@ -118,10 +118,17 @@ const ACCOUNTS = [
 ] as const;
 
 function UpgradeModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: () => void }) {
-  const [copied, setCopied]     = useState<string | null>(null);
-  const [pin, setPin]           = useState("");
-  const [pinError, setPinError] = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [copied, setCopied]       = useState<string | null>(null);
+  const [step, setStep]           = useState<"pay" | "claim" | "done">("pay");
+  const [email, setEmail]         = useState("");
+  const [txnId, setTxnId]         = useState("");
+  const [claimError, setClaimError] = useState("");
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [autoPin, setAutoPin]     = useState("");
+  // manual PIN fallback
+  const [pin, setPin]             = useState("");
+  const [pinError, setPinError]   = useState("");
+  const [loading, setLoading]     = useState(false);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -138,6 +145,36 @@ function UpgradeModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: ()
     navigator.clipboard.writeText(iban);
     setCopied(iban);
     setTimeout(() => setCopied(null), 2200);
+  };
+
+  const handleClaim = async () => {
+    if (!email.trim() || !email.includes("@")) { setClaimError("Valid email daalo."); return; }
+    if (!txnId.trim()) { setClaimError("Transaction ID / reference number daalo."); return; }
+    setClaimLoading(true);
+    setClaimError("");
+    try {
+      const res  = await fetch("/api/claim-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), txnId: txnId.trim() }),
+      });
+      const data = (await res.json()) as { success?: boolean; pin?: string; error?: string };
+      if (data.success && data.pin) {
+        setAutoPin(data.pin);
+        setStep("done");
+      } else {
+        setClaimError(data.error ?? "Kuch masla hua. Dobara try karo.");
+      }
+    } catch {
+      setClaimError("Network error. Dobara try karo.");
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
+  const handleActivateAutoPin = () => {
+    localStorage.setItem("cv_premium", "1");
+    onUnlock();
   };
 
   const handleActivate = async () => {
@@ -217,121 +254,183 @@ function UpgradeModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: ()
         {/* ── Body ── */}
         <div style={{ padding: "24px 26px 28px" }}>
 
-          {/* What you get */}
-          <div style={{ marginBottom: 20 }}>
-            {[
-              "Unlimited AI Cover Letters",
-              "All job & scholarship insights",
-              "Lifetime access — no subscription",
-            ].map(f => (
-              <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span style={{ fontSize: 14, color: C.green }}>✦</span>
-                <span style={{ fontSize: 13, color: C.espresso, fontWeight: 500 }}>{f}</span>
+          {/* ── STEP: done — show PIN ── */}
+          {step === "done" && (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
+              <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: C.espresso }}>
+                Tumhara PIN aa gaya!
+              </p>
+              <div style={{
+                margin: "14px 0", padding: "20px",
+                backgroundColor: C.greenBg, borderRadius: 16,
+                border: `1.5px solid ${C.greenBdr}`,
+              }}>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: C.green, textTransform: "uppercase", letterSpacing: "0.12em" }}>Your PIN</p>
+                <p style={{ margin: 0, fontSize: 42, fontWeight: 900, color: C.espresso, letterSpacing: "0.3em", lineHeight: 1.1 }}>{autoPin}</p>
               </div>
-            ))}
-          </div>
-
-          {/* Instructions */}
-          <p style={{ margin: "0 0 14px", fontSize: 13, color: "#374151", lineHeight: 1.75 }}>
-            Transfer <strong>280 PKR</strong> to either account below, then confirm below to unlock instantly — no proof required.
-          </p>
-
-          {/* IBAN cards */}
-          {ACCOUNTS.map(({ bank, iban, bg, icon }) => (
-            <div key={iban} style={{
-              padding: "14px 16px", borderRadius: 14,
-              border: `1.5px solid ${C.border}`, backgroundColor: bg,
-              marginBottom: 12,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                    {icon} {bank}
-                  </p>
-                  <p style={{ margin: "6px 0 0", fontSize: 14, fontWeight: 800, color: C.espresso, letterSpacing: "0.04em", wordBreak: "break-all" as const }}>
-                    {iban}
-                  </p>
-                  <p style={{ margin: "4px 0 0", fontSize: 11, color: C.muted }}>Amount: 280 PKR</p>
-                </div>
-                <button
-                  onClick={() => copyIBAN(iban)}
-                  style={{
-                    flexShrink: 0, padding: "7px 14px", borderRadius: 9,
-                    border: `1px solid ${C.border}`, backgroundColor: C.white,
-                    fontSize: 12, fontWeight: 700,
-                    color: copied === iban ? C.green : C.muted,
-                    cursor: "pointer", transition: "all 0.2s",
-                  }}
-                >
-                  {copied === iban ? "✓ Copied" : "Copy"}
-                </button>
-              </div>
+              <button
+                onClick={handleActivateAutoPin}
+                style={{
+                  width: "100%", padding: "14px",
+                  background: "linear-gradient(135deg, #5B50F0, #7C3AED)",
+                  color: "#fff", border: "none", borderRadius: 12,
+                  fontSize: 15, fontWeight: 800, cursor: "pointer",
+                  boxShadow: "0 8px 24px rgba(91,80,240,0.35)",
+                }}
+              >
+                ✦ Activate Premium Now
+              </button>
+              <p style={{ margin: "10px 0 0", fontSize: 11, color: C.muted }}>
+                Ye PIN save kar lo — dobara chahiye toh apna email use karo
+              </p>
             </div>
-          ))}
-
-          {/* WhatsApp instruction */}
-          <div style={{
-            margin: "18px 0 16px", padding: "13px 16px", borderRadius: 12,
-            backgroundColor: "#F0FDF4", border: `1px solid ${C.greenBdr}`,
-          }}>
-            <p style={{ margin: 0, fontSize: 13, color: "#065F46", lineHeight: 1.65 }}>
-              After transferring, WhatsApp us at{" "}
-              <strong>+92 325 9874601</strong> with your name — we will send you a 4-digit PIN.
-            </p>
-          </div>
-
-          {/* PIN input */}
-          <input
-            type="text"
-            inputMode="numeric"
-            maxLength={8}
-            value={pin}
-            onChange={e => { setPin(e.target.value); setPinError(""); }}
-            onKeyDown={e => e.key === "Enter" && handleActivate()}
-            placeholder="Enter your PIN"
-            style={{
-              width: "100%", padding: "13px 16px", boxSizing: "border-box" as const,
-              border: `1.5px solid ${pinError ? "#FDA4AF" : C.border}`, borderRadius: 12,
-              fontSize: 16, fontWeight: 800, color: C.espresso, backgroundColor: C.white,
-              outline: "none", letterSpacing: "0.2em", textAlign: "center",
-              marginBottom: 4,
-            }}
-          />
-          {pinError && (
-            <p style={{ margin: "6px 0 10px", fontSize: 12, color: "#DC2626" }}>{pinError}</p>
           )}
 
-          {/* Activate button */}
-          <button
-            onClick={handleActivate}
-            disabled={loading || !pin.trim()}
-            style={{
-              width: "100%", marginTop: 10, padding: "15px 20px",
-              background: (loading || !pin.trim()) ? "#C7C4E8" : "linear-gradient(135deg, #5B50F0, #7C3AED)",
-              color: "#FFFFFF", border: "none", borderRadius: 14,
-              fontSize: 15, fontWeight: 800,
-              cursor: (loading || !pin.trim()) ? "not-allowed" : "pointer",
-              boxShadow: (!loading && pin.trim()) ? "0 10px 28px -6px rgba(91,80,240,0.40)" : "none",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-              transition: "all 0.2s",
-              letterSpacing: "0.01em",
-            }}
-          >
-            {loading ? (
-              <>
-                <div style={{
-                  width: 16, height: 16, border: "2.5px solid rgba(255,255,255,0.35)",
-                  borderTopColor: "#fff", borderRadius: "50%",
-                  animation: "spin 0.7s linear infinite",
-                }} />
-                Verifying…
-              </>
-            ) : "✦ Activate Premium"}
-          </button>
+          {/* ── STEP: pay ── */}
+          {step === "pay" && (<>
+            {/* What you get */}
+            <div style={{ marginBottom: 16 }}>
+              {["Unlimited AI Cover Letters", "All job & scholarship insights", "Lifetime access — no subscription"].map(f => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
+                  <span style={{ fontSize: 13, color: C.green }}>✦</span>
+                  <span style={{ fontSize: 13, color: C.espresso, fontWeight: 500 }}>{f}</span>
+                </div>
+              ))}
+            </div>
 
-          <p style={{ margin: "12px 0 0", fontSize: 11, color: C.muted, textAlign: "center", lineHeight: 1.6 }}>
-            PIN verified server-side &nbsp;·&nbsp; Instant activation &nbsp;·&nbsp; Lifetime access
-          </p>
+            <p style={{ margin: "0 0 12px", fontSize: 13, color: "#374151", lineHeight: 1.75 }}>
+              <strong>280 PKR</strong> in se kisi bhi account pe bhejo:
+            </p>
+
+            {/* IBAN cards */}
+            {ACCOUNTS.map(({ bank, iban, bg, icon }) => (
+              <div key={iban} style={{ padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${C.border}`, backgroundColor: bg, marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase" }}>{icon} {bank}</p>
+                    <p style={{ margin: "5px 0 0", fontSize: 13, fontWeight: 800, color: C.espresso, letterSpacing: "0.03em", wordBreak: "break-all" as const }}>{iban}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: 11, color: C.muted }}>Amount: 280 PKR</p>
+                  </div>
+                  <button onClick={() => copyIBAN(iban)} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 8, border: `1px solid ${C.border}`, backgroundColor: C.white, fontSize: 12, fontWeight: 700, color: copied === iban ? C.green : C.muted, cursor: "pointer" }}>
+                    {copied === iban ? "✓" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <button
+              onClick={() => setStep("claim")}
+              style={{
+                width: "100%", marginTop: 8, padding: "14px",
+                background: "linear-gradient(135deg, #5B50F0, #7C3AED)",
+                color: "#fff", border: "none", borderRadius: 12,
+                fontSize: 15, fontWeight: 800, cursor: "pointer",
+                boxShadow: "0 8px 24px rgba(91,80,240,0.35)",
+              }}
+            >
+              Payment Kar Di ✓ — PIN Lo
+            </button>
+            <p style={{ margin: "10px 0 0", fontSize: 11, color: C.muted, textAlign: "center" }}>
+              Payment ke baad apna email aur transaction ID dale — PIN turant milega
+            </p>
+          </>)}
+
+          {/* ── STEP: claim ── */}
+          {step === "claim" && (<>
+            <button onClick={() => setStep("pay")} style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", padding: "0 0 14px", display: "flex", alignItems: "center", gap: 4 }}>
+              ← Wapas
+            </button>
+
+            <p style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 700, color: C.espresso }}>
+              Payment ho gayi? Apna PIN abhi lo:
+            </p>
+
+            <label style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>Tumhara Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setClaimError(""); }}
+              placeholder="example@gmail.com"
+              style={{
+                width: "100%", marginTop: 5, marginBottom: 12, padding: "11px 14px",
+                boxSizing: "border-box" as const,
+                border: `1.5px solid ${C.border}`, borderRadius: 10,
+                fontSize: 14, color: C.espresso, backgroundColor: C.white, outline: "none",
+              }}
+            />
+
+            <label style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>Transaction ID / Reference Number</label>
+            <input
+              type="text"
+              value={txnId}
+              onChange={e => { setTxnId(e.target.value); setClaimError(""); }}
+              placeholder="e.g. TXN123456789"
+              style={{
+                width: "100%", marginTop: 5, marginBottom: 4, padding: "11px 14px",
+                boxSizing: "border-box" as const,
+                border: `1.5px solid ${claimError ? "#FECACA" : C.border}`, borderRadius: 10,
+                fontSize: 14, color: C.espresso, backgroundColor: C.white, outline: "none",
+              }}
+            />
+            <p style={{ margin: "0 0 14px", fontSize: 11, color: C.muted }}>
+              JazzCash ya bank app mein transaction detail mein milega
+            </p>
+
+            {claimError && (
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#DC2626", fontWeight: 600 }}>⚠️ {claimError}</p>
+            )}
+
+            <button
+              onClick={handleClaim}
+              disabled={claimLoading}
+              style={{
+                width: "100%", padding: "14px",
+                background: claimLoading ? "#C7C4E8" : "linear-gradient(135deg, #5B50F0, #7C3AED)",
+                color: "#fff", border: "none", borderRadius: 12,
+                fontSize: 15, fontWeight: 800,
+                cursor: claimLoading ? "not-allowed" : "pointer",
+                boxShadow: claimLoading ? "none" : "0 8px 24px rgba(91,80,240,0.35)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              }}
+            >
+              {claimLoading ? (
+                <><div style={{ width: 16, height: 16, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> PIN mil raha hai...</>
+              ) : "✦ Mujhe Mera PIN Do"}
+            </button>
+
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: C.muted, textAlign: "center" }}>Pehle se PIN hai?</p>
+              <input
+                type="text" inputMode="numeric" maxLength={8}
+                value={pin}
+                onChange={e => { setPin(e.target.value); setPinError(""); }}
+                onKeyDown={e => e.key === "Enter" && handleActivate()}
+                placeholder="PIN yahan daalo"
+                style={{
+                  width: "100%", padding: "10px 14px", boxSizing: "border-box" as const,
+                  border: `1.5px solid ${pinError ? "#FECACA" : C.border}`, borderRadius: 10,
+                  fontSize: 15, fontWeight: 800, color: C.espresso, backgroundColor: C.white,
+                  outline: "none", letterSpacing: "0.2em", textAlign: "center",
+                }}
+              />
+              {pinError && <p style={{ margin: "5px 0 0", fontSize: 12, color: "#DC2626" }}>{pinError}</p>}
+              <button
+                onClick={handleActivate}
+                disabled={loading || !pin.trim()}
+                style={{
+                  width: "100%", marginTop: 8, padding: "10px",
+                  background: (loading || !pin.trim()) ? "#C7C4E8" : C.espresso,
+                  color: "#fff", border: "none", borderRadius: 10,
+                  fontSize: 13, fontWeight: 700,
+                  cursor: (loading || !pin.trim()) ? "not-allowed" : "pointer",
+                }}
+              >
+                {loading ? "Verify ho raha hai..." : "Activate"}
+              </button>
+            </div>
+          </>)}
+
         </div>
       </div>
     </div>

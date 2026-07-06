@@ -87,11 +87,13 @@ model ScholarshipOpportunity {
 }
 
 model PremiumPin {
-  id        Int      @id @default(autoincrement())
-  pin       String   @unique
-  used      Boolean  @default(false)
-  usedAt    DateTime?
-  createdAt DateTime @default(now())
+  id               Int       @id @default(autoincrement())
+  pin              String    @unique
+  used             Boolean   @default(false)
+  usedAt           DateTime?
+  createdAt        DateTime  @default(now())
+  claimedByEmail   String?
+  txnId            String?
 }
 
 model AIMatchResult {
