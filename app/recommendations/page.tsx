@@ -893,7 +893,8 @@ function RecommendationsContent() {
   const getDeadline = (id: string) => {
     if (PK_ROLLING_IDS.has(id)) return "Open / Rolling";
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    return `${months[id.charCodeAt(0) % 12]} ${(id.charCodeAt(1) % 20) + 8}, 2026`;
+    const yr = new Date().getFullYear();
+    return `${months[id.charCodeAt(0) % 12]} ${(id.charCodeAt(1) % 20) + 8}, ${yr}`;
   };
 
   const interviewTips = (title: string) => [
