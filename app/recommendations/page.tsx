@@ -1597,7 +1597,7 @@ function RecommendationsContent() {
         </main>
 
         <footer style={{ backgroundColor: "#1E1B4B", color: "#A5B4FC", textAlign: "center", padding: "18px 24px", fontSize: 13 }}>
-          CV Matcher &copy; {new Date().getFullYear()} &nbsp;·&nbsp; AI-powered career guidance
+          CV Matcher &copy; {new Date().getFullYear()} &nbsp;·&nbsp; AI-powered career guidance &nbsp;·&nbsp; v2.2
         </footer>
       </div>
     </>
