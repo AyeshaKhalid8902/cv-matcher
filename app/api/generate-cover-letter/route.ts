@@ -2,7 +2,12 @@ import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const GROQ_MODEL = (process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct").replace(/﻿/g, "").trim();
+// Model fallback chain — auto-skips deprecated/unavailable models
+const GROQ_MODELS = [
+  (process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct").replace(/﻿/g, "").trim(),
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
+];
 
 type Profile = {
   primaryDomain:   string;
@@ -13,121 +18,122 @@ type Profile = {
 };
 
 type Job = {
-  title:          string;
-  company:        string;
-  location:       string;
-  description:    string;
+  title:           string;
+  company:         string;
+  location:        string;
+  description:     string;
   requiredSkills?: string[];
-  salary?:        string;
+  salary?:         string;
 };
 
 function buildPrompt(profile: Profile, job: Job): string {
-  const skillsList    = profile.skills.slice(0, 14).join(", ");
-  const reqSkills     = (job.requiredSkills ?? []).join(", ") || "not specified";
-  const bioSection    = profile.bio
-    ? `Professional Summary: ${profile.bio}`
-    : "";
+  return `You are an elite career coach. Write a professional, tailored cover letter for this candidate.
 
-  return `You are an elite career coach and cover letter specialist. Write a professional, tailored, and compelling cover letter for this candidate.
-
-CANDIDATE PROFILE:
-- Professional Field: ${profile.primaryDomain}
+CANDIDATE:
+- Field: ${profile.primaryDomain}
 - Education: ${profile.educationLevel}
-- Years of Experience: ${profile.experienceYears}
-- Core Skills: ${skillsList}
-${bioSection}
+- Experience: ${profile.experienceYears} years
+- Skills: ${profile.skills.slice(0, 12).join(", ")}
+${profile.bio ? `- Summary: ${profile.bio}` : ""}
 
-TARGET POSITION:
-- Job Title: ${job.title}
-- Company: ${job.company}
+JOB:
+- Title: ${job.title} at ${job.company}
 - Location: ${job.location}
-- Job Description: ${job.description}
-- Required Skills: ${reqSkills}
+- Description: ${job.description.slice(0, 300)}
+- Required: ${(job.requiredSkills ?? []).join(", ") || "see description"}
 
-COVER LETTER INSTRUCTIONS:
-1. Open with "Dear Hiring Manager," then a powerful first sentence that names the exact role and company
-2. Paragraph 1 (3-4 sentences): Who you are professionally, your field, and years of experience — connect it directly to this role
-3. Paragraph 2 (3-4 sentences): Highlight 3-4 specific skills from the requirements that you possess — be concrete, not generic
-4. Paragraph 3 (2-3 sentences): Why THIS company and role excites you; forward-looking and confident
-5. Close with "Sincerely," followed by a single line: "[Your Name]"
-6. Length: 310–370 words total
-7. Tone: Confident, warm, and professional — NOT robotic, NOT overly formal
-8. Write entirely in first person ("I am…", "My experience…")
+Write a 310–360 word cover letter:
+1. Start: "Dear Hiring Manager," then a strong opening sentence naming the exact role and company
+2. Para 1 (3-4 sentences): who you are, your field, experience — connected to this role
+3. Para 2 (3-4 sentences): 3-4 specific matching skills — be concrete not generic
+4. Para 3 (2-3 sentences): why this company and role excites you
+5. End: "Sincerely," then "[Your Name]"
+Tone: confident, warm, professional. First person. Output ONLY the letter.`;
+}
 
-Output ONLY the cover letter text. No preamble, no metadata, no commentary.`;
+async function groqWithFallback(payload: Record<string, unknown>, apiKey: string): Promise<string> {
+  let lastErr = "";
+  for (const model of GROQ_MODELS) {
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ ...payload, model }),
+      });
+
+      if (res.status === 429) {
+        const after = res.headers.get("retry-after");
+        await new Promise(r => setTimeout(r, after ? Math.ceil(+after * 1000) + 200 : 1500));
+        // retry same model once
+        const res2 = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ ...payload, model }),
+        });
+        if (res2.ok) {
+          const d = await res2.json() as { choices: { message: { content: string } }[] };
+          return d?.choices?.[0]?.message?.content ?? "";
+        }
+      }
+
+      if (res.ok) {
+        const d = await res.json() as { choices: { message: { content: string } }[] };
+        return d?.choices?.[0]?.message?.content ?? "";
+      }
+
+      const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+      const msg = err?.error?.message ?? `HTTP ${res.status}`;
+      if (
+        res.status === 404 ||
+        msg.toLowerCase().includes("decommissioned") ||
+        msg.toLowerCase().includes("does not exist") ||
+        msg.toLowerCase().includes("no longer supported")
+      ) { lastErr = msg; continue; }
+
+      throw new Error(msg);
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e);
+      if (
+        lastErr.toLowerCase().includes("decommissioned") ||
+        lastErr.toLowerCase().includes("does not exist") ||
+        lastErr.toLowerCase().includes("no longer supported")
+      ) continue;
+      throw e;
+    }
+  }
+  throw new Error(`AI service unavailable: ${lastErr}`);
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { profile?: Profile; job?: Job };
 
-    if (!body?.profile || !body?.job) {
-      return Response.json(
-        { error: "Both 'profile' and 'job' fields are required." },
-        { status: 400 },
-      );
-    }
+    if (!body?.profile || !body?.job)
+      return Response.json({ error: "Both 'profile' and 'job' are required." }, { status: 400 });
 
     const { profile, job } = body;
 
-    // Basic validation
-    if (!profile.primaryDomain || !profile.skills?.length) {
-      return Response.json(
-        { error: "profile.primaryDomain and profile.skills are required." },
-        { status: 422 },
-      );
-    }
-    if (!job.title || !job.company) {
-      return Response.json(
-        { error: "job.title and job.company are required." },
-        { status: 422 },
-      );
-    }
+    if (!profile.primaryDomain || !profile.skills?.length)
+      return Response.json({ error: "profile.primaryDomain and profile.skills are required." }, { status: 422 });
+    if (!job.title || !job.company)
+      return Response.json({ error: "job.title and job.company are required." }, { status: 422 });
 
     const apiKey = (process.env.GROQ_API_KEY ?? "").replace(/﻿/g, "").trim();
-    if (!apiKey || apiKey.includes("your-groq-key")) {
-      return Response.json(
-        { error: "Groq API key not configured. Add GROQ_API_KEY to .env.local" },
-        { status: 500 },
-      );
-    }
+    if (!apiKey || apiKey.includes("your-groq-key"))
+      return Response.json({ error: "Groq API key not configured." }, { status: 500 });
 
-    const fetchWithRetry = async (retries = 3): Promise<Response> => {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model:       GROQ_MODEL,
-          max_tokens:  700,
-          temperature: 0.65,
-          messages: [
-            { role: "system", content: "You are an expert career coach who writes elite, personalized cover letters. You write in first person, never use placeholder text like [Name], and produce immediately usable letters." },
-            { role: "user",   content: buildPrompt(profile, job) },
-          ],
-        }),
-      });
-      if (r.status === 429 && retries > 0) {
-        const retryAfter = r.headers.get("retry-after");
-        const waitMs = retryAfter ? Math.ceil(parseFloat(retryAfter) * 1000) + 200 : 1500;
-        await new Promise(res => setTimeout(res, waitMs));
-        return fetchWithRetry(retries - 1);
-      }
-      return r;
-    };
-
-    const res = await fetchWithRetry();
-
-    if (!res.ok) {
-      const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-      throw new Error(err?.error?.message ?? `Groq API error (${res.status})`);
-    }
-
-    const data  = (await res.json()) as { choices: { message: { content: string } }[] };
-    const letter = data?.choices?.[0]?.message?.content?.trim() ?? "";
+    const letter = await groqWithFallback({
+      messages: [
+        { role: "system", content: "You are an expert career coach who writes elite, personalized cover letters in first person. Never use placeholder text like [Name]." },
+        { role: "user",   content: buildPrompt(profile, job) },
+      ],
+      max_tokens:  700,
+      temperature: 0.65,
+    }, apiKey);
 
     if (!letter) throw new Error("Empty response from AI. Please try again.");
 
-    return Response.json({ success: true, coverLetter: letter });
+    return Response.json({ success: true, coverLetter: letter.trim() });
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Something went wrong.";

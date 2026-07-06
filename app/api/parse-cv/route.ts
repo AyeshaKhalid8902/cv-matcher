@@ -1,405 +1,421 @@
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const GROQ_MODEL = (process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct").replace(/﻿/g, "").trim();
+// Model fallback chain — if one is deprecated/down, next is tried automatically
+const GROQ_MODELS = [
+  (process.env.GROQ_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct").replace(/﻿/g, "").trim(),
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
+];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ParsedCV = {
-  primaryDomain: string;
-  skills: string[];
+  primaryDomain:  string;
+  skills:         string[];
   experienceYears: number;
   educationLevel: string;
-  bio: string;
+  bio:            string;
 };
 
 type Job = {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  salary: string;
-  description: string;
+  id:             string;
+  title:          string;
+  company:        string;
+  location:       string;
+  salary:         string;
+  description:    string;
   requiredSkills: string[];
-  matchScore: number;
-  applyUrl?: string;
+  matchScore:     number;
+  applyUrl?:      string;
 };
 
 type Scholarship = {
-  id: string;
-  title: string;
-  university: string;
-  country: string;
-  amount: string;
+  id:          string;
+  title:       string;
+  university:  string;
+  country:     string;
+  amount:      string;
   description: string;
-  matchScore: number;
-  applyUrl?: string;
+  matchScore:  number;
+  applyUrl?:   string;
 };
 
 type SkillGap = {
-  skill: string;
+  skill:     string;
   avgSalary: string;
-  reason: string;
+  reason:    string;
 };
 
-// ── Groq fetch with auto-retry on rate limit ─────────────────────────────────
+// ── Groq with model-fallback + rate-limit retry ───────────────────────────────
 
-async function groqFetch(body: object, apiKey: string, retries = 3): Promise<Response> {
+async function groqCall(
+  body: Record<string, unknown>,
+  apiKey: string,
+  retries = 2,
+): Promise<Response> {
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body),
   });
   if (res.status === 429 && retries > 0) {
-    const retryAfter = res.headers.get("retry-after");
-    const waitMs = retryAfter ? Math.ceil(parseFloat(retryAfter) * 1000) + 200 : 1500;
-    await new Promise(r => setTimeout(r, waitMs));
-    return groqFetch(body, apiKey, retries - 1);
+    const after = res.headers.get("retry-after");
+    await new Promise(r => setTimeout(r, after ? Math.ceil(+after * 1000) + 200 : 1500));
+    return groqCall(body, apiKey, retries - 1);
   }
   return res;
 }
 
-// ── Step 1: Extract profile + skill gaps from CV using Groq ──────────────────
-
-async function extractProfile(cvText: string): Promise<{ profile: ParsedCV; skillGaps: SkillGap[] }> {
-  const apiKey = (process.env.GROQ_API_KEY ?? "").replace(/﻿/g, "").trim();
-  if (!apiKey || apiKey.includes("your-groq-key")) {
-    throw new Error("Groq API key missing.");
+async function groqWithFallback(
+  payload: Record<string, unknown>,
+  apiKey: string,
+): Promise<string> {
+  let lastErr = "";
+  for (const model of GROQ_MODELS) {
+    try {
+      const res = await groqCall({ ...payload, model }, apiKey);
+      if (res.ok) {
+        const data = await res.json() as { choices: { message: { content: string } }[] };
+        return data?.choices?.[0]?.message?.content ?? "";
+      }
+      const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+      const msg = err?.error?.message ?? `HTTP ${res.status}`;
+      // Skip to next model if this one is gone
+      if (
+        res.status === 404 ||
+        msg.toLowerCase().includes("decommissioned") ||
+        msg.toLowerCase().includes("does not exist") ||
+        msg.toLowerCase().includes("no longer supported")
+      ) {
+        lastErr = msg;
+        continue;
+      }
+      throw new Error(msg);
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e);
+      if (
+        lastErr.toLowerCase().includes("decommissioned") ||
+        lastErr.toLowerCase().includes("does not exist") ||
+        lastErr.toLowerCase().includes("no longer supported")
+      ) continue;
+      throw e;
+    }
   }
+  throw new Error(`All AI models unavailable: ${lastErr}`);
+}
 
-  const prompt = `Extract info from this CV. Return ONLY valid JSON, no markdown.
+// ── Step 1: Extract profile + skill gaps from CV ──────────────────────────────
 
-{"profile":{"primaryDomain":"main field e.g. Software Engineering","skills":["skill1","skill2"],"experienceYears":2,"educationLevel":"Bachelor's in CS","bio":"2 sentence professional summary"},"skillGaps":[{"skill":"skill they lack for remote work","avgSalary":"$70,000/yr","reason":"why globally demanded"}]}
+async function extractProfile(
+  cvText: string,
+): Promise<{ profile: ParsedCV; skillGaps: SkillGap[] }> {
+  const apiKey = (process.env.GROQ_API_KEY ?? "").replace(/﻿/g, "").trim();
+  if (!apiKey || apiKey.includes("your-groq-key"))
+    throw new Error("Groq API key missing.");
 
-Rules:
-- primaryDomain: specific field like "Software Engineering", "Data Science", "Marketing", "Finance", "Medicine"
-- skills: all skills found in CV (max 15)
-- skillGaps: exactly 3 skills NOT in their CV that are in high demand for their field
-- Output JSON only, no explanation
+  const prompt = `Extract from this CV and return ONLY valid JSON, no markdown, no explanation.
+
+{"profile":{"primaryDomain":"specific field e.g. Software Engineering","skills":["skill1","skill2"],"experienceYears":2,"educationLevel":"Bachelor in CS","bio":"2 sentence professional summary"},"skillGaps":[{"skill":"missing skill","avgSalary":"$70,000/yr","reason":"why in demand"}]}
+
+Rules: skills = all from CV (max 15), skillGaps = exactly 3 skills NOT in CV but demanded in their field. JSON only.
 
 CV:
 ${cvText.slice(0, 2500)}`;
 
-  const res = await groqFetch({
-    model: GROQ_MODEL,
+  const text = await groqWithFallback({
     messages: [{ role: "user", content: prompt }],
     max_tokens: 600,
     temperature: 0.1,
   }, apiKey);
 
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Groq API error (${res.status})`);
-  }
-
-  const data = (await res.json()) as { choices: { message: { content: string } }[] };
-  const text = data?.choices?.[0]?.message?.content ?? "";
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("Could not parse AI response. Please try again.");
-
   const parsed = JSON.parse(match[0]) as { profile: ParsedCV; skillGaps: SkillGap[] };
   if (!parsed.profile) throw new Error("Incomplete AI response. Please try again.");
   if (!parsed.skillGaps) parsed.skillGaps = [];
   return parsed;
 }
 
-// ── Step 2: Fetch real live jobs from free APIs ───────────────────────────────
+// ── Step 2: Real job fetching with multiple source fallbacks ──────────────────
 
-function domainToTags(domain: string, skills: string[]): string[] {
+function domainToKeywords(domain: string, skills: string[]): { tag: string; keyword: string } {
   const d = domain.toLowerCase();
-  const s = skills.map(x => x.toLowerCase());
+  const s = skills.map(x => x.toLowerCase()).join(" ");
+  const combined = d + " " + s;
 
-  const tagMap: [RegExp, string[]][] = [
-    [/software|developer|web|frontend|backend|fullstack|full.?stack/, ["javascript", "react", "node", "python"]],
-    [/data science|machine learning|ai|artificial intelligence/, ["python", "machine-learning", "data"]],
-    [/data analyst|analytics/, ["python", "data", "sql"]],
-    [/devops|cloud|infrastructure|platform/, ["devops", "aws", "kubernetes"]],
-    [/design|ui|ux|graphic/, ["design", "ui"]],
-    [/marketing|growth|seo|content/, ["marketing"]],
-    [/finance|accounting|fintech/, ["finance"]],
-    [/product manager|product management/, ["product"]],
-    [/mobile|ios|android|flutter|react native/, ["ios", "android", "react-native"]],
-    [/blockchain|crypto|web3/, ["blockchain", "crypto"]],
-    [/hr|human resources|recruitment/, ["hr"]],
-    [/sales|business development/, ["sales"]],
-    [/cyber|security|infosec/, ["cybersecurity"]],
-    [/java\b/, ["java"]],
-    [/php/, ["php"]],
-    [/ruby/, ["ruby"]],
-    [/golang|go\b/, ["golang"]],
-    [/rust/, ["rust"]],
+  const MAP: [RegExp, string][] = [
+    [/python|data science|machine learning|ai\b|artificial intelligence/, "python"],
+    [/javascript|typescript|react|frontend|front.?end|next\.?js|vue/, "javascript"],
+    [/node|backend|back.?end|express|nest/, "node"],
+    [/java\b/, "java"],
+    [/php|laravel|wordpress/, "php"],
+    [/ruby|rails/, "ruby"],
+    [/golang|go\b/, "golang"],
+    [/rust\b/, "rust"],
+    [/devops|docker|kubernetes|ci.?cd|aws|cloud|terraform/, "devops"],
+    [/mobile|flutter|react.?native|ios|android|swift|kotlin/, "react-native"],
+    [/design|ui.?ux|figma|graphic|visual/, "design"],
+    [/marketing|seo|content|social.?media|growth/, "marketing"],
+    [/finance|accounting|fintech|banking/, "finance"],
+    [/product.?manage|product.?owner/, "product"],
+    [/blockchain|crypto|web3|solidity/, "blockchain"],
+    [/hr|human.?resources|recruiter|talent/, "hr"],
+    [/sales|business.?develop/, "sales"],
+    [/cyber|security|infosec|penetration/, "cybersecurity"],
+    [/sql|database|dba|postgres|mysql/, "sql"],
+    [/android/, "android"],
+    [/ios|swift/, "ios"],
   ];
 
-  for (const [re, tags] of tagMap) {
-    if (re.test(d) || s.some(sk => re.test(sk))) return tags;
+  for (const [re, tag] of MAP) {
+    if (re.test(combined)) return { tag, keyword: tag };
   }
-
-  // Generic fallback using first skill that has a common tag
-  const commonTags = ["python", "javascript", "react", "java", "node", "sql", "aws"];
-  for (const tag of commonTags) {
-    if (s.some(sk => sk.includes(tag))) return [tag];
-  }
-
-  return ["remote"];
+  return { tag: "remote", keyword: domain.split(" ")[0] || "remote" };
 }
 
 type RemoteOKItem = {
   legal?: string;
-  id?: string;
-  slug?: string;
-  url?: string;
-  title?: string;
-  company?: string;
-  location?: string;
-  description?: string;
-  tags?: string[];
-  salary_min?: number;
-  salary_max?: number;
+  id?: string; slug?: string; url?: string;
+  title?: string; company?: string; location?: string;
+  description?: string; tags?: string[];
+  salary_min?: number; salary_max?: number;
 };
 
-async function fetchRealJobs(domain: string, skills: string[]): Promise<Job[]> {
-  const tags = domainToTags(domain, skills);
-  const tag = tags[0];
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-
+async function fetchRemoteOK(tag: string, skills: string[]): Promise<Job[]> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 7000);
   try {
-    const url = `https://remoteok.com/api?tag=${encodeURIComponent(tag)}`;
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { "User-Agent": "CVMatcher/1.0", Accept: "application/json" },
+    const res = await fetch(`https://remoteok.com/api?tag=${encodeURIComponent(tag)}`, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": "CVMatcher/2.0", Accept: "application/json" },
     });
-    clearTimeout(timer);
-
+    clearTimeout(t);
     if (!res.ok) return [];
     const data = (await res.json()) as RemoteOKItem[];
+    const userSkills = skills.map(s => s.toLowerCase());
 
-    const jobs: Job[] = data
+    return data
       .filter(j => !j.legal && j.title && j.company)
-      .slice(0, 20)
+      .slice(0, 25)
       .map((j, i): Job => {
-        const jobTags = (j.tags ?? []).slice(0, 5);
+        const tags = (j.tags ?? []).map(t => t.replace(/-/g, " ")).slice(0, 6);
+        const matched = tags.filter(t => userSkills.some(s => s.includes(t) || t.includes(s)));
+        const score = Math.min(95, 58 + matched.length * 9 + Math.floor(Math.random() * 4));
         const salary = j.salary_min && j.salary_max
           ? `$${Math.round(j.salary_min / 1000)}k – $${Math.round(j.salary_max / 1000)}k/yr`
-          : "Competitive salary";
+          : "Competitive";
         const desc = (j.description ?? "")
-          .replace(/<[^>]+>/g, " ")
-          .replace(/\s{2,}/g, " ")
-          .trim()
-          .slice(0, 200);
-
-        // Simple match score based on skills overlap
-        const userSkillsLower = skills.map(s => s.toLowerCase());
-        const matched = jobTags.filter(t => userSkillsLower.some(s => s.includes(t) || t.includes(s)));
-        const score = Math.min(95, 60 + matched.length * 8 + Math.floor(Math.random() * 5));
-
+          .replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 220);
         return {
           id: `rok-${i}`,
           title: j.title!,
           company: j.company!,
           location: j.location || "Remote / Worldwide",
           salary,
-          description: desc || `${j.title} position at ${j.company}`,
-          requiredSkills: jobTags,
+          description: desc || `${j.title} at ${j.company}`,
+          requiredSkills: tags,
           matchScore: score,
           applyUrl: j.url ?? `https://remoteok.com/l/${j.id ?? j.slug}`,
         };
       })
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, 5);
-
-    return jobs;
   } catch {
-    clearTimeout(timer);
+    clearTimeout(t);
     return [];
   }
 }
 
-// ── Step 3: Real curated scholarships matched by domain ───────────────────────
+type ArbeitnowItem = {
+  slug: string; company_name: string; title: string;
+  description: string; remote: boolean; url: string;
+  tags: string[]; location: string;
+};
+type ArbeitnowResponse = { data?: ArbeitnowItem[] };
 
-const REAL_SCHOLARSHIPS: (Omit<Scholarship, "matchScore"> & { domains: string[] })[] = [
-  {
-    id: "chev", title: "Chevening Scholarship", university: "UK Universities",
-    country: "United Kingdom", amount: "Fully Funded",
-    description: "UK government's global scholarship programme — covers tuition, living costs & flights for a 1-year Master's.",
-    applyUrl: "https://www.chevening.org/scholarships/",
-    domains: ["all"],
-  },
-  {
-    id: "fulb", title: "Fulbright Foreign Student Program", university: "US Universities",
-    country: "USA", amount: "Fully Funded",
-    description: "US government scholarship for graduate study, research, or teaching in the United States.",
-    applyUrl: "https://foreign.fulbrightonline.org/",
-    domains: ["all"],
-  },
-  {
-    id: "daad", title: "DAAD Scholarship", university: "German Universities",
-    country: "Germany", amount: "Fully Funded",
-    description: "German Academic Exchange Service — postgraduate scholarships at top German universities across all fields.",
-    applyUrl: "https://www.daad.de/en/study-and-research-in-germany/scholarships/",
-    domains: ["all"],
-  },
-  {
-    id: "gates", title: "Gates Cambridge Scholarship", university: "University of Cambridge",
-    country: "United Kingdom", amount: "Fully Funded",
-    description: "Full-cost scholarships for outstanding applicants from outside the UK for a postgraduate degree at Cambridge.",
-    applyUrl: "https://www.gatescambridge.org/",
-    domains: ["all"],
-  },
-  {
-    id: "com", title: "Commonwealth Scholarship", university: "UK Universities",
-    country: "United Kingdom", amount: "Fully Funded",
-    description: "For citizens of Commonwealth countries — covers Master's and PhD programmes at UK universities.",
-    applyUrl: "https://cscuk.fcdo.gov.uk/scholarships/",
-    domains: ["all"],
-  },
-  {
-    id: "aga", title: "Aga Khan Foundation International Scholarship", university: "Partner Universities",
-    country: "Multiple Countries", amount: "Fully Funded",
-    description: "Postgraduate scholarships for students from developing countries demonstrating academic excellence and leadership.",
-    applyUrl: "https://www.akdn.org/our-agencies/aga-khan-foundation/international-scholarship-programme",
-    domains: ["all"],
-  },
-  {
-    id: "era", title: "Erasmus+ Scholarship", university: "European Universities",
-    country: "Europe", amount: "Partial – Full",
-    description: "EU's programme for education and training — study in multiple European countries with monthly stipend.",
-    applyUrl: "https://erasmus-plus.ec.europa.eu/",
-    domains: ["all"],
-  },
-  {
-    id: "si", title: "Swedish Institute Scholarship", university: "Swedish Universities",
-    country: "Sweden", amount: "Fully Funded",
-    description: "Covers tuition, living allowance, travel and insurance for Master's studies in Sweden.",
-    applyUrl: "https://si.se/en/apply/scholarships/swedish-institute-scholarships-for-global-professionals/",
-    domains: ["all"],
-  },
-  {
-    id: "hec", title: "HEC Overseas Scholarship (Phase III)", university: "International Universities",
-    country: "Global", amount: "Fully Funded",
-    description: "Pakistan's Higher Education Commission scholarship for PhD and postdoctoral studies at top global universities.",
-    applyUrl: "https://www.hec.gov.pk/english/scholarshipsHP/Pages/Overseas-Scholarship.aspx",
-    domains: ["all"],
-  },
-  {
-    id: "google", title: "Google PhD Fellowship", university: "Partner Universities",
-    country: "Global", amount: "Fully Funded",
-    description: "Supports outstanding PhD students in Computer Science, Engineering, and related fields worldwide.",
-    applyUrl: "https://research.google/programs-and-events/phd-fellowship/",
-    domains: ["software", "data", "computer", "engineering", "ai", "machine learning"],
-  },
-  {
-    id: "wb", title: "World Bank Robert S. McNamara Fellowship", university: "Partner Universities",
-    country: "Global", amount: "Fully Funded",
-    description: "Supports PhD students from developing countries conducting research on development economics and related fields.",
-    applyUrl: "https://www.worldbank.org/en/programs/scholarships",
-    domains: ["finance", "economics", "business", "development", "policy"],
-  },
-  {
-    id: "who", title: "WHO Special Programme Fellowships", university: "Global Institutions",
-    country: "Global", amount: "Fully Funded",
-    description: "WHO fellowships for public health training, research, and capacity building in health sciences.",
-    applyUrl: "https://www.who.int/about/education/fellowships",
-    domains: ["medicine", "health", "nursing", "pharmacy", "public health", "biology"],
-  },
+async function fetchArbeitnow(keyword: string, skills: string[]): Promise<Job[]> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 7000);
+  try {
+    const url = `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(keyword)}`;
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": "CVMatcher/2.0", Accept: "application/json" },
+    });
+    clearTimeout(t);
+    if (!res.ok) return [];
+    const data = (await res.json()) as ArbeitnowResponse;
+    if (!data?.data?.length) return [];
+    const userSkills = skills.map(s => s.toLowerCase());
+
+    return data.data
+      .slice(0, 25)
+      .map((j, i): Job => {
+        const tags = (j.tags ?? []).slice(0, 6);
+        const matched = tags.filter(t => userSkills.some(s => s.includes(t) || t.includes(s)));
+        const score = Math.min(95, 55 + matched.length * 9 + Math.floor(Math.random() * 5));
+        const desc = (j.description ?? "")
+          .replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 220);
+        return {
+          id: `arb-${i}`,
+          title: j.title,
+          company: j.company_name,
+          location: j.location || (j.remote ? "Remote" : "Worldwide"),
+          salary: "Competitive",
+          description: desc || `${j.title} position`,
+          requiredSkills: tags,
+          matchScore: score,
+          applyUrl: j.url,
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 5);
+  } catch {
+    clearTimeout(t);
+    return [];
+  }
+}
+
+type RemotiveItem = {
+  id: number; url: string; title: string; company_name: string;
+  tags: string[]; candidate_required_location: string;
+  description: string; salary?: string;
+};
+type RemotiveResponse = { jobs?: RemotiveItem[] };
+
+async function fetchRemotive(keyword: string, skills: string[]): Promise<Job[]> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 7000);
+  try {
+    const url = `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(keyword)}&limit=25`;
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": "CVMatcher/2.0", Accept: "application/json" },
+    });
+    clearTimeout(t);
+    if (!res.ok) return [];
+    const data = (await res.json()) as RemotiveResponse;
+    if (!data?.jobs?.length) return [];
+    const userSkills = skills.map(s => s.toLowerCase());
+
+    return data.jobs
+      .slice(0, 25)
+      .map((j, i): Job => {
+        const tags = (j.tags ?? []).slice(0, 6);
+        const matched = tags.filter(t => userSkills.some(s => s.includes(t) || t.includes(s)));
+        const score = Math.min(95, 55 + matched.length * 9 + Math.floor(Math.random() * 5));
+        const desc = (j.description ?? "")
+          .replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 220);
+        return {
+          id: `rem-${i}`,
+          title: j.title,
+          company: j.company_name,
+          location: j.candidate_required_location || "Worldwide",
+          salary: j.salary || "Competitive",
+          description: desc || `${j.title} at ${j.company_name}`,
+          requiredSkills: tags,
+          matchScore: score,
+          applyUrl: j.url,
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 5);
+  } catch {
+    clearTimeout(t);
+    return [];
+  }
+}
+
+// Tries 3 sources in sequence; returns first non-empty result
+async function fetchRealJobs(domain: string, skills: string[]): Promise<Job[]> {
+  const { tag, keyword } = domainToKeywords(domain, skills);
+
+  const remoteOK = await fetchRemoteOK(tag, skills);
+  if (remoteOK.length >= 3) return remoteOK;
+
+  const arbeitnow = await fetchArbeitnow(keyword, skills);
+  if (arbeitnow.length >= 3) return arbeitnow;
+
+  const remotive = await fetchRemotive(keyword, skills);
+  return remotive;
+}
+
+// ── Step 3: Real curated scholarships ─────────────────────────────────────────
+
+const SCHOLARSHIPS = [
+  { id: "chev",  title: "Chevening Scholarship",                   university: "UK Universities",          country: "UK",              amount: "Fully Funded", description: "UK government's prestigious global scholarship — covers tuition, living costs and flights for a 1-year Master's.", applyUrl: "https://www.chevening.org/scholarships/", domains: ["all"] },
+  { id: "fulb",  title: "Fulbright Foreign Student Program",        university: "US Universities",          country: "USA",             amount: "Fully Funded", description: "US government scholarship for graduate study, research or teaching across all disciplines.", applyUrl: "https://foreign.fulbrightonline.org/", domains: ["all"] },
+  { id: "daad",  title: "DAAD Scholarship",                         university: "German Universities",      country: "Germany",         amount: "Fully Funded", description: "German Academic Exchange Service — postgraduate scholarships across all fields at leading German universities.", applyUrl: "https://www.daad.de/en/study-and-research-in-germany/scholarships/", domains: ["all"] },
+  { id: "gates", title: "Gates Cambridge Scholarship",              university: "University of Cambridge",  country: "UK",              amount: "Fully Funded", description: "Full-cost scholarships for outstanding applicants from outside the UK pursuing a postgraduate degree at Cambridge.", applyUrl: "https://www.gatescambridge.org/", domains: ["all"] },
+  { id: "com",   title: "Commonwealth Scholarship",                 university: "UK Universities",          country: "UK",              amount: "Fully Funded", description: "For citizens of Commonwealth countries — Master's and PhD programmes fully funded at UK universities.", applyUrl: "https://cscuk.fcdo.gov.uk/scholarships/", domains: ["all"] },
+  { id: "aga",   title: "Aga Khan Foundation International Scholarship", university: "Global Institutions", country: "Multiple",        amount: "Fully Funded", description: "Postgraduate scholarships for students from developing countries with academic excellence and leadership potential.", applyUrl: "https://www.akdn.org/our-agencies/aga-khan-foundation/international-scholarship-programme", domains: ["all"] },
+  { id: "era",   title: "Erasmus+ Scholarship",                     university: "European Universities",   country: "Europe",          amount: "Partial–Full", description: "EU's flagship education programme — study in multiple European countries with monthly living stipend included.", applyUrl: "https://erasmus-plus.ec.europa.eu/", domains: ["all"] },
+  { id: "si",    title: "Swedish Institute Scholarship",            university: "Swedish Universities",    country: "Sweden",          amount: "Fully Funded", description: "Covers tuition, living allowance, travel and health insurance for a Master's degree in Sweden.", applyUrl: "https://si.se/en/apply/scholarships/swedish-institute-scholarships-for-global-professionals/", domains: ["all"] },
+  { id: "hec",   title: "HEC Overseas Scholarship (Phase III)",     university: "International Universities", country: "Global",        amount: "Fully Funded", description: "Pakistan HEC scholarship for PhD and postdoctoral research at top-ranked universities worldwide.", applyUrl: "https://www.hec.gov.pk/english/scholarshipsHP/Pages/Overseas-Scholarship.aspx", domains: ["all"] },
+  { id: "google",title: "Google PhD Fellowship",                    university: "Partner Universities",    country: "Global",          amount: "Fully Funded", description: "Supports outstanding PhD students in Computer Science, AI, Machine Learning and related engineering fields.", applyUrl: "https://research.google/programs-and-events/phd-fellowship/", domains: ["software", "data", "computer", "engineering", "ai", "machine learning", "developer"] },
+  { id: "wb",    title: "World Bank McNamara Fellowship",           university: "Partner Universities",    country: "Global",          amount: "Fully Funded", description: "Supports PhD students from developing countries in development economics, finance and public policy research.", applyUrl: "https://www.worldbank.org/en/programs/scholarships", domains: ["finance", "economics", "business", "development", "policy", "management"] },
+  { id: "who",   title: "WHO Special Programme Fellowships",        university: "Global Institutions",     country: "Global",          amount: "Fully Funded", description: "WHO fellowships for public health training and research — strengthening global health capacity.", applyUrl: "https://www.who.int/about/education/fellowships", domains: ["medicine", "health", "nursing", "pharmacy", "biology", "medical"] },
 ];
 
-function getMatchedScholarships(domain: string, educationLevel: string): Scholarship[] {
-  const d = domain.toLowerCase();
+function getScholarships(domain: string, educationLevel: string): Scholarship[] {
+  const d   = domain.toLowerCase();
   const edu = educationLevel.toLowerCase();
+  const eduBonus = /master|msc|mba|phd|doctorate/.test(edu) ? 8 : /bachelor|bsc/.test(edu) ? 5 : 0;
 
-  const hasBachelor = /bachelor|bsc|beng|bs |b\.s/.test(edu);
-  const hasMaster   = /master|msc|mba|ms /.test(edu);
-  const hasPhD      = /phd|doctorate|doctoral/.test(edu);
-
-  return REAL_SCHOLARSHIPS
-    .filter(s => {
-      if (s.domains[0] === "all") return true;
-      return s.domains.some(sd => d.includes(sd) || sd.includes(d.split(" ")[0]));
-    })
-    .map((s): Scholarship => {
-      // Score based on domain match and education level
-      const domainMatch = s.domains[0] === "all" ? 70 : 88;
-      const eduBonus = hasMaster || hasPhD ? 8 : hasBachelor ? 5 : 0;
-      return {
-        id: s.id,
-        title: s.title,
-        university: s.university,
-        country: s.country,
-        amount: s.amount,
-        description: s.description,
-        matchScore: Math.min(95, domainMatch + eduBonus + Math.floor(Math.random() * 5)),
-        applyUrl: s.applyUrl,
-      };
-    })
+  return SCHOLARSHIPS
+    .filter(s => s.domains[0] === "all" || s.domains.some(sd => d.includes(sd) || sd.includes(d.split(" ")[0])))
+    .map((s): Scholarship => ({
+      id: s.id, title: s.title, university: s.university,
+      country: s.country, amount: s.amount, description: s.description,
+      applyUrl: s.applyUrl,
+      matchScore: Math.min(95, (s.domains[0] === "all" ? 70 : 86) + eduBonus + Math.floor(Math.random() * 5)),
+    }))
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 4);
 }
 
-// ── PDF extraction — tries pdf-parse first, falls back to pdf2json ────────────
+// ── PDF / DOCX / TXT extraction ───────────────────────────────────────────────
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (
-      buf: Buffer
-    ) => Promise<{ text: string }>;
-    const result = await pdfParse(buffer);
-    if (result.text && result.text.trim().length > 20) return result.text;
-  } catch {
-    // fall through to pdf2json
-  }
+    const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (b: Buffer) => Promise<{ text: string }>;
+    const r = await pdfParse(buffer);
+    if (r.text && r.text.trim().length > 20) return r.text;
+  } catch { /* fall through */ }
 
   const { default: PDFParser } = await import("pdf2json");
-
   return new Promise<string>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("PDF parsing timed out")), 25000);
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parser = new (PDFParser as any)(null, 1);
-
     parser.on("pdfParser_dataReady", (data: Record<string, unknown>) => {
       clearTimeout(timer);
       try {
-        type Page = { Texts?: Array<{ R?: Array<{ T?: string }> }> };
+        type Page = { Texts?: { R?: { T?: string }[] }[] };
         const pages = (data.Pages ?? []) as Page[];
-        const text = pages
-          .map(p =>
-            (p.Texts ?? [])
-              .map(t => (t.R ?? []).map(r => decodeURIComponent(r.T ?? "")).join(""))
-              .join(" ")
-          )
-          .join("\n\n");
+        const text  = pages.map(p =>
+          (p.Texts ?? []).map(t => (t.R ?? []).map(r => decodeURIComponent(r.T ?? "")).join("")).join(" ")
+        ).join("\n\n");
         resolve(text);
-      } catch {
-        resolve("");
-      }
+      } catch { resolve(""); }
     });
-
     parser.on("pdfParser_dataError", (err: { parserError?: string }) => {
       clearTimeout(timer);
       reject(new Error(err?.parserError ?? "Could not read PDF"));
     });
-
-    try {
-      parser.parseBuffer(buffer);
-    } catch (e) {
-      clearTimeout(timer);
-      reject(e instanceof Error ? e : new Error("PDF parse failed"));
-    }
+    try { parser.parseBuffer(buffer); }
+    catch (e) { clearTimeout(timer); reject(e instanceof Error ? e : new Error("PDF parse failed")); }
   });
 }
 
-// ── DOCX extraction via mammoth ───────────────────────────────────────────────
-
 async function extractDocxText(buffer: Buffer): Promise<string> {
   const mammoth = await import("mammoth");
-  const result = await mammoth.extractRawText({ buffer });
-  return result.value;
+  return (await mammoth.extractRawText({ buffer })).value;
 }
 
-// ── Main route handler ────────────────────────────────────────────────────────
+// ── Main handler ──────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
   try {
@@ -409,7 +425,6 @@ export async function POST(req: Request) {
 
     const name = file.name.toLowerCase();
     const mime = file.type;
-
     const isPDF  = mime === "application/pdf"  || name.endsWith(".pdf");
     const isDOCX = mime.includes("wordprocessingml") || name.endsWith(".docx");
     const isTXT  = mime === "text/plain" || name.endsWith(".txt");
@@ -418,32 +433,31 @@ export async function POST(req: Request) {
     if (isDOC)  return Response.json({ error: "Old .doc format is not supported. Please save as PDF, .docx, or .txt." }, { status: 400 });
     if (!isPDF && !isDOCX && !isTXT) return Response.json({ error: "Please upload a PDF, Word (.docx), or text (.txt) file." }, { status: 400 });
 
-    const bytes  = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const buffer = Buffer.from(await file.arrayBuffer());
 
     let cvText: string;
     try {
       if (isPDF)       cvText = await extractPdfText(buffer);
       else if (isDOCX) cvText = await extractDocxText(buffer);
       else             cvText = buffer.toString("utf-8");
-    } catch (e: unknown) {
+    } catch (e) {
       return Response.json({ error: e instanceof Error ? e.message : "Could not read the file." }, { status: 400 });
     }
 
     if (!cvText || cvText.trim().length < 20) {
-      return Response.json({ error: "The file appears empty or contains no readable text. If it is a scanned PDF, please export a text-based version." }, { status: 400 });
+      return Response.json({ error: "The file appears empty or has no readable text. If it is a scanned PDF, please export a text-based version." }, { status: 400 });
     }
 
-    // Step 1: Extract profile with Groq (fast, small prompt)
+    // Step 1: AI profile extraction
     const { profile, skillGaps } = await extractProfile(cvText);
 
-    // Step 2 & 3: Fetch real jobs + match scholarships in parallel
+    // Step 2 & 3: real jobs + scholarships in parallel
     const [jobs, scholarships] = await Promise.all([
       fetchRealJobs(profile.primaryDomain, profile.skills),
-      Promise.resolve(getMatchedScholarships(profile.primaryDomain, profile.educationLevel)),
+      Promise.resolve(getScholarships(profile.primaryDomain, profile.educationLevel)),
     ]);
 
-    console.log(`[parse-cv] Domain: ${profile.primaryDomain} | Jobs: ${jobs.length} | Scholarships: ${scholarships.length}`);
+    console.log(`[parse-cv] ${profile.primaryDomain} | jobs:${jobs.length} | scholarships:${scholarships.length}`);
     return Response.json({ success: true, profile, jobs, scholarships, skillGaps });
 
   } catch (err: unknown) {
@@ -451,7 +465,7 @@ export async function POST(req: Request) {
     const msg = raw.toLowerCase().includes("fetch failed") || raw.toLowerCase().includes("econnrefused")
       ? "Could not reach the AI service. Please check your internet connection and try again."
       : raw;
-    console.error("[parse-cv] Error:", raw);
+    console.error("[parse-cv]", raw);
     return Response.json({ error: msg }, { status: 500 });
   }
 }
