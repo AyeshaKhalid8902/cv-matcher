@@ -9,14 +9,14 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 16px;
   line-height: 1.6;
-  color: #2C221E;
-  background-color: #FAF9F6;
+  color: #1E1B4B;
+  background-color: #F0F1FF;
   -webkit-font-smoothing: antialiased;
 }
 
 /* Visible focus ring for keyboard navigation */
 :focus-visible {
-  outline: 3px solid #B99D82;
+  outline: 3px solid #6366F1;
   outline-offset: 3px;
   border-radius: 4px;
 }
@@ -56,8 +56,8 @@ html {
 .spinner {
   width: 22px;
   height: 22px;
-  border: 3px solid #E8DED4;
-  border-top-color: #2C221E;
+  border: 3px solid #E2E1F5;
+  border-top-color: #5B50F0;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;

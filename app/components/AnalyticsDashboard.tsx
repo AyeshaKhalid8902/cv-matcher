@@ -104,24 +104,24 @@ function DemandBar({ label, flag, score, delay }: { label: string; flag: string;
     return () => clearTimeout(t);
   }, [score, delay]);
 
-  const color = score >= 85 ? "#2C221E" : score >= 70 ? "#6E6560" : "#B99D82";
+  const color = score >= 85 ? "#059669" : score >= 70 ? "#5B50F0" : "#64748B";
 
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#2C221E", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "#1E1B4B", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 18 }}>{flag}</span> {label}
         </span>
         <span style={{ fontSize: 14, fontWeight: 800, color }}>
-          {animated}<span style={{ fontSize: 11, color: "#6E6560" }}>/100</span>
+          {animated}<span style={{ fontSize: 11, color: "#64748B" }}>/100</span>
         </span>
       </div>
-      <div style={{ height: 10, backgroundColor: "#EDE8E3", borderRadius: 99, overflow: "hidden" }}>
+      <div style={{ height: 10, backgroundColor: "#E2E1F5", borderRadius: 99, overflow: "hidden" }}>
         <div style={{
           height: "100%",
           width: `${width}%`,
           borderRadius: 99,
-          background: `linear-gradient(90deg, #C9B49B, #2C221E)`,
+          background: `linear-gradient(90deg, #A5B4FC, #5B50F0)`,
           transition: "width 1.1s cubic-bezier(0.34, 1.56, 0.64, 1)",
         }} />
       </div>
@@ -144,10 +144,10 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div style={{ position: "relative", width: 140, height: 140, flexShrink: 0 }}>
       <svg width="140" height="140" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="70" cy="70" r={r} fill="none" stroke="#EDE8E3" strokeWidth="10" />
+        <circle cx="70" cy="70" r={r} fill="none" stroke="#E2E1F5" strokeWidth="10" />
         <circle
           cx="70" cy="70" r={r} fill="none"
-          stroke="#2C221E" strokeWidth="10"
+          stroke="#5B50F0" strokeWidth="10"
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={dash}
@@ -158,8 +158,8 @@ function ScoreRing({ score }: { score: number }) {
         position: "absolute", inset: 0,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
       }}>
-        <span style={{ fontSize: 30, fontWeight: 900, color: "#2C221E", lineHeight: 1 }}>{animated}</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#6E6560", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.1em" }}>Score</span>
+        <span style={{ fontSize: 30, fontWeight: 900, color: "#1E1B4B", lineHeight: 1 }}>{animated}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#64748B", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.1em" }}>Score</span>
       </div>
     </div>
   );
@@ -185,9 +185,9 @@ export default function AnalyticsDashboard({ profile, skillGaps, onViewRecommend
     backgroundColor: "rgba(255,255,255,0.72)",
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
-    border: "1px solid rgba(232,222,212,0.85)",
+    border: "1px solid rgba(226,225,245,0.90)",
     borderRadius: 24,
-    boxShadow: "0 20px 60px -20px rgba(44,34,30,0.18)",
+    boxShadow: "0 20px 60px -20px rgba(30,27,75,0.12)",
   };
 
   const label: React.CSSProperties = {
@@ -195,7 +195,7 @@ export default function AnalyticsDashboard({ profile, skillGaps, onViewRecommend
     fontWeight: 800,
     textTransform: "uppercase",
     letterSpacing: "0.22em",
-    color: "#6E6560",
+    color: "#64748B",
   };
 
   return (
@@ -203,10 +203,10 @@ export default function AnalyticsDashboard({ profile, skillGaps, onViewRecommend
 
       {/* ── Header badge ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 2, height: 32, backgroundColor: "#2C221E", borderRadius: 2 }} />
+        <div style={{ width: 3, height: 32, background: "linear-gradient(180deg, #5B50F0, #7C3AED)", borderRadius: 2 }} />
         <div>
           <p style={{ margin: 0, ...label }}>Premium Analytics</p>
-          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#2C221E" }}>Global Demand & Skill Intelligence</p>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1E1B4B" }}>Global Demand & Skill Intelligence</p>
         </div>
       </div>
 
@@ -219,18 +219,19 @@ export default function AnalyticsDashboard({ profile, skillGaps, onViewRecommend
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             <ScoreRing score={score} />
             <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#2C221E", lineHeight: 1.2 }}>
+              <p style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#1E1B4B", lineHeight: 1.2 }}>
                 AI Profile Score<br />
-                <span style={{ fontSize: 32, color: "#2C221E" }}>{score}%</span>
+                <span style={{ fontSize: 32, color: "#5B50F0" }}>{score}%</span>
               </p>
               <div style={{
                 marginTop: 12, display: "inline-flex", alignItems: "center", gap: 6,
-                backgroundColor: "#EDE8E3", borderRadius: 99, padding: "5px 12px"
+                backgroundColor: "#EEEEFF", borderRadius: 99, padding: "5px 12px",
+                border: "1px solid #C7D2FE",
               }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#4ADE80", display: "inline-block" }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#2C221E" }}>Verified for Remote / Global Roles</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#1E1B4B" }}>Verified for Remote / Global Roles</span>
               </div>
-              <p style={{ margin: "10px 0 0", fontSize: 12, color: "#6E6560", lineHeight: 1.5 }}>
+              <p style={{ margin: "10px 0 0", fontSize: 12, color: "#64748B", lineHeight: 1.5 }}>
                 Based on skills, experience & education depth
               </p>
             </div>
@@ -264,14 +265,14 @@ export default function AnalyticsDashboard({ profile, skillGaps, onViewRecommend
         {/* Demand Radar */}
         <div style={{ ...glass, padding: "28px 24px" }}>
           <p style={{ ...label, marginBottom: 4 }}>Global Demand Radar</p>
-          <p style={{ margin: "0 0 20px", fontSize: 12, color: "#6E6560" }}>
-            Market demand for <strong style={{ color: "#2C221E" }}>{profile.primaryDomain}</strong> professionals
+          <p style={{ margin: "0 0 20px", fontSize: 12, color: "#64748B" }}>
+            Market demand for <strong style={{ color: "#1E1B4B" }}>{profile.primaryDomain}</strong> professionals
           </p>
           <DemandBar label="Pakistan" flag="🇵🇰" score={demand.pakistan} delay={100} />
           <DemandBar label="European Union" flag="🇪🇺" score={demand.eu} delay={300} />
           <DemandBar label="Middle East" flag="🏙️" score={demand.middleEast} delay={500} />
-          <div style={{ marginTop: 16, padding: "10px 14px", backgroundColor: "#FAF9F6", borderRadius: 10, border: "1px solid #E8DED4" }}>
-            <p style={{ margin: 0, fontSize: 12, color: "#6E6560" }}>
+          <div style={{ marginTop: 16, padding: "10px 14px", backgroundColor: "#F0F1FF", borderRadius: 10, border: "1px solid #E2E1F5" }}>
+            <p style={{ margin: 0, fontSize: 12, color: "#64748B" }}>
               {demand.middleEast >= 85
                 ? "🔥 Middle East has highest demand — strong opportunities in GCC countries."
                 : demand.eu >= 85
@@ -286,29 +287,29 @@ export default function AnalyticsDashboard({ profile, skillGaps, onViewRecommend
       <div style={{ ...glass, padding: "28px 24px" }}>
         <div style={{ marginBottom: 20 }}>
           <p style={{ ...label, marginBottom: 4 }}>Skill Gap Analysis</p>
-          <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#2C221E" }}>
+          <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#1E1B4B" }}>
             Bridge These Gaps for International Remote Work
           </p>
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#6E6560" }}>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748B" }}>
             AI identified 3 high-paying skills not on your CV but highly demanded globally in your field.
           </p>
         </div>
 
         {skillGaps.length === 0 ? (
-          <p style={{ fontSize: 14, color: "#6E6560", fontStyle: "italic" }}>Skill gap data not available. Re-upload your CV for analysis.</p>
+          <p style={{ fontSize: 14, color: "#64748B", fontStyle: "italic" }}>Skill gap data not available. Re-upload your CV for analysis.</p>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
             {skillGaps.slice(0, 3).map((gap, i) => (
               <div key={i} style={{
-                backgroundColor: "#FAF9F6", borderRadius: 16,
-                border: "1px solid #E8DED4", padding: "20px 18px",
+                backgroundColor: "#F0F1FF", borderRadius: 16,
+                border: "1px solid #E2E1F5", padding: "20px 18px",
                 position: "relative", overflow: "hidden",
               }}>
                 {/* Rank badge */}
                 <div style={{
                   position: "absolute", top: 14, right: 14,
                   width: 26, height: 26, borderRadius: "50%",
-                  backgroundColor: "#2C221E", color: "#FAF9F6",
+                  background: "linear-gradient(135deg, #5B50F0, #7C3AED)", color: "#FFFFFF",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 12, fontWeight: 800
                 }}>
@@ -318,24 +319,24 @@ export default function AnalyticsDashboard({ profile, skillGaps, onViewRecommend
                 {/* Plus icon */}
                 <div style={{
                   width: 40, height: 40, borderRadius: 10,
-                  backgroundColor: "#EDE8E3", border: "1px solid #D9C8B4",
+                  backgroundColor: "#EEEEFF", border: "1px solid #C7D2FE",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 20, marginBottom: 14
                 }}>
                   ✦
                 </div>
 
-                <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 800, color: "#2C221E", lineHeight: 1.3 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 800, color: "#1E1B4B", lineHeight: 1.3 }}>
                   {gap.skill}
                 </p>
                 <div style={{
                   display: "inline-block", marginBottom: 10,
-                  padding: "3px 10px", backgroundColor: "#2C221E",
+                  padding: "3px 10px", background: "linear-gradient(135deg, #5B50F0, #7C3AED)",
                   borderRadius: 99,
                 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#FAF9F6" }}>{gap.avgSalary}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#FFFFFF" }}>{gap.avgSalary}</span>
                 </div>
-                <p style={{ margin: 0, fontSize: 12, color: "#6E6560", lineHeight: 1.6 }}>{gap.reason}</p>
+                <p style={{ margin: 0, fontSize: 12, color: "#64748B", lineHeight: 1.6 }}>{gap.reason}</p>
               </div>
             ))}
           </div>
@@ -347,20 +348,20 @@ export default function AnalyticsDashboard({ profile, skillGaps, onViewRecommend
         onClick={onViewRecommendations}
         style={{
           width: "100%", padding: "16px 24px",
-          backgroundColor: "#2C221E", color: "#FAF9F6",
+          background: "linear-gradient(135deg, #5B50F0, #7C3AED)", color: "#FFFFFF",
           border: "none", borderRadius: 16,
           fontSize: 16, fontWeight: 700, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          boxShadow: "0 16px 40px -16px rgba(44,34,30,0.55)",
+          boxShadow: "0 16px 40px -16px rgba(91,80,240,0.55)",
           transition: "transform 0.15s, box-shadow 0.15s",
         }}
         onMouseEnter={e => {
           (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 20px 50px -16px rgba(44,34,30,0.65)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 20px 50px -16px rgba(91,80,240,0.65)";
         }}
         onMouseLeave={e => {
           (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 16px 40px -16px rgba(44,34,30,0.55)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 16px 40px -16px rgba(91,80,240,0.55)";
         }}
       >
         View My Personalized Jobs & Scholarships

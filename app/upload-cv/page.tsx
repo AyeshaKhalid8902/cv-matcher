@@ -29,17 +29,17 @@ type SkillGap = {
   reason: string;
 };
 
-// ── Shared design tokens (matches recommendations page) ───────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
-  espresso: "#2C221E",  /* 14:1+ on cream/white — AAA */
-  cream:    "#FFFFFF",  /* pure white page bg */
-  white:    "#F9F7F4",  /* warm-tinted card surfaces */
-  gold:     "#7A6350",  /* was #B99D82 (2.6:1) → now ~5.5:1 — AA ✓ */
-  goldDeep: "#6B5040",
-  border:   "#E6DFD5",  /* consistent with recommendations page */
-  muted:    "#6B5A50",  /* was #8C7A6B (3.7:1) → now ~6.9:1 — AAA ✓ */
-  warm:     "#EDE8E3",
-  accent:   "#7A6350",  /* same as gold for single accent token */
+  espresso: "#1E1B4B",  /* deep indigo-navy — primary text */
+  cream:    "#F0F1FF",  /* lavender-tinted page background */
+  white:    "#FFFFFF",  /* pure white card surfaces */
+  gold:     "#5B50F0",  /* indigo accent — labels, highlights */
+  goldDeep: "#4338CA",
+  border:   "#E2E1F5",  /* subtle indigo-tinted border */
+  muted:    "#64748B",  /* cool slate muted text */
+  warm:     "#EEEEFF",  /* light indigo — chip/tag backgrounds */
+  accent:   "#5B50F0",  /* primary accent */
 };
 
 const S = {
@@ -51,7 +51,7 @@ const S = {
     flexDirection: "column" as const,
     /* Subtle radial glow in top-right for depth */
     backgroundImage:
-      "radial-gradient(ellipse 80% 40% at 70% -10%, rgba(201,180,155,0.13) 0%, transparent 70%)",
+      "radial-gradient(ellipse 80% 40% at 70% -10%, rgba(91,80,240,0.09) 0%, transparent 70%)",
   },
   main: { flex: 1, maxWidth: 680, margin: "0 auto", width: "100%", padding: "0 20px 72px" },
 
@@ -63,7 +63,7 @@ const S = {
   },
   subtitle: { fontSize: 16, color: C.muted, marginTop: 14, lineHeight: 1.8, margin: "16px 0 0" },
 
-  /* Card — solid white for maximum contrast against #FAF9F6 page bg */
+  /* Card — solid white for contrast against lavender page bg */
   card: {
     backgroundColor: C.white,
     borderRadius: 24,
@@ -78,8 +78,8 @@ const S = {
     padding: "52px 32px 44px",
     textAlign: "center",
     cursor: "pointer",
-    backgroundColor: active ? "rgba(44,34,30,0.03)" : C.cream,
-    boxShadow: active ? "none" : "inset 0 1px 4px rgba(44,34,30,0.05)",
+    backgroundColor: active ? "rgba(91,80,240,0.04)" : C.white,
+    boxShadow: active ? "none" : "inset 0 1px 4px rgba(91,80,240,0.06)",
     transition: "border-color 0.25s ease-out, background-color 0.25s ease-out",
     userSelect: "none",
   }),

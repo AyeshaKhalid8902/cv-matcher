@@ -47,22 +47,22 @@ type ModalState = {
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
-  espresso:  "#2C221E",
-  cream:     "#FFFFFF",  /* pure white page bg */
-  muted:     "#6B5A50",  /* was #8C7A6B (3.7:1 — fail) → now ~6.9:1 — AAA ✓ */
-  border:    "#E6DFD5",
-  gold:      "#7A6350",  /* was #B99D82 (2.6:1 — fail) → now ~5.5:1 — AA ✓ */
-  darkBtn:   "#2C221E",
+  espresso:  "#1E1B4B",  /* deep indigo-navy */
+  cream:     "#F0F1FF",  /* lavender-tinted page bg */
+  muted:     "#64748B",  /* cool slate */
+  border:    "#E2E1F5",  /* indigo-tinted border */
+  gold:      "#5B50F0",  /* indigo accent */
+  darkBtn:   "#1E1B4B",
   white:     "#FFFFFF",
-  green:     "#15803D",
-  greenBg:   "#F0FDF4",
-  greenBdr:  "#86EFAC",
-  amber:     "#B45309",
+  green:     "#059669",
+  greenBg:   "#ECFDF5",
+  greenBdr:  "#6EE7B7",
+  amber:     "#D97706",
   amberBg:   "#FFFBEB",
   amberBdr:  "#FCD34D",
-  red:       "#BE123C",
-  redBg:     "#FFF1F2",
-  redBdr:    "#FDA4AF",
+  red:       "#DC2626",
+  redBg:     "#FEF2F2",
+  redBdr:    "#FECACA",
 };
 
 // ── Language strings ──────────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ function UpgradeModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: ()
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 2000,
-        backgroundColor: "rgba(44,34,30,0.78)",
+        backgroundColor: "rgba(30,27,75,0.80)",
         backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "16px",
@@ -181,7 +181,7 @@ function UpgradeModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: ()
           width: "100%", maxWidth: 480,
           backgroundColor: C.cream, borderRadius: 28,
           border: `1px solid ${C.border}`,
-          boxShadow: "0 40px 100px -20px rgba(44,34,30,0.6)",
+          boxShadow: "0 40px 100px -20px rgba(30,27,75,0.55)",
           overflow: "hidden",
           animation: "modalSlideUp 0.3s cubic-bezier(0.34,1.2,0.64,1) both",
         }}
@@ -307,11 +307,11 @@ function UpgradeModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: ()
             disabled={loading || !pin.trim()}
             style={{
               width: "100%", marginTop: 10, padding: "15px 20px",
-              backgroundColor: (loading || !pin.trim()) ? "#D4C5B9" : C.espresso,
-              color: C.cream, border: "none", borderRadius: 14,
+              background: (loading || !pin.trim()) ? "#C7C4E8" : "linear-gradient(135deg, #5B50F0, #7C3AED)",
+              color: "#FFFFFF", border: "none", borderRadius: 14,
               fontSize: 15, fontWeight: 800,
               cursor: (loading || !pin.trim()) ? "not-allowed" : "pointer",
-              boxShadow: (!loading && pin.trim()) ? "0 10px 28px -6px rgba(44,34,30,0.45)" : "none",
+              boxShadow: (!loading && pin.trim()) ? "0 10px 28px -6px rgba(91,80,240,0.40)" : "none",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
               transition: "all 0.2s",
               letterSpacing: "0.01em",
@@ -380,7 +380,7 @@ function CoverLetterModal({
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 1000,
-        backgroundColor: "rgba(44,34,30,0.70)",
+        backgroundColor: "rgba(30,27,75,0.72)",
         backdropFilter: "blur(10px)",
         WebkitBackdropFilter: "blur(10px)",
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -396,7 +396,7 @@ function CoverLetterModal({
           backgroundColor: C.cream,
           borderRadius: 28,
           border: `1px solid ${C.border}`,
-          boxShadow: "0 40px 100px -20px rgba(44,34,30,0.55)",
+          boxShadow: "0 40px 100px -20px rgba(30,27,75,0.45)",
           display: "flex", flexDirection: "column",
           overflow: "hidden",
         }}
@@ -518,7 +518,7 @@ function CoverLetterModal({
                     fontFamily: "Georgia, 'Times New Roman', serif",
                     outline: "none",
                     boxSizing: "border-box",
-                    boxShadow: "inset 0 2px 8px rgba(44,34,30,0.05)",
+                    boxShadow: "inset 0 2px 8px rgba(91,80,240,0.05)",
                     filter: isPremium ? "none" : "blur(5px)",
                     userSelect: isPremium ? "auto" : "none",
                     pointerEvents: isPremium ? "auto" : "none",
@@ -531,14 +531,14 @@ function CoverLetterModal({
                   <div style={{
                     position: "absolute", inset: 0, borderRadius: 14,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    backgroundColor: "rgba(250,249,246,0.50)",
+                    backgroundColor: "rgba(240,241,255,0.55)",
                     backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
                   }}>
                     <div style={{
                       backgroundColor: C.white, border: `1px solid ${C.border}`,
                       borderRadius: 20, padding: "28px 28px 24px",
                       maxWidth: 360, width: "90%", textAlign: "center",
-                      boxShadow: "0 24px 64px -12px rgba(44,34,30,0.22)",
+                      boxShadow: "0 24px 64px -12px rgba(30,27,75,0.15)",
                     }}>
                       <p style={{ margin: "0 0 10px", fontSize: 28, lineHeight: 1 }}>🚀</p>
                       <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 800, color: C.espresso, lineHeight: 1.4 }}>
@@ -552,10 +552,10 @@ function CoverLetterModal({
                       <button
                         style={{
                           width: "100%", padding: "12px 20px",
-                          backgroundColor: C.espresso, color: C.cream,
+                          background: "linear-gradient(135deg, #5B50F0, #7C3AED)", color: "#FFFFFF",
                           border: "none", borderRadius: 12,
                           fontSize: 14, fontWeight: 700, cursor: "pointer",
-                          boxShadow: "0 8px 24px -6px rgba(44,34,30,0.38)",
+                          boxShadow: "0 8px 24px -6px rgba(91,80,240,0.35)",
                           transition: "opacity 0.18s",
                         }}
                         onClick={onUpgrade}
@@ -610,13 +610,13 @@ function CoverLetterModal({
                 style={{
                   padding: "10px 26px",
                   border: "none", borderRadius: 10,
-                  backgroundColor: copied ? "#16A34A" : C.espresso,
-                  color: C.cream,
+                  background: copied ? "#16A34A" : "linear-gradient(135deg, #5B50F0, #7C3AED)",
+                  color: "#FFFFFF",
                   fontSize: 14, fontWeight: 700, cursor: "pointer",
                   display: "flex", alignItems: "center", gap: 8,
                   boxShadow: copied
                     ? "0 6px 20px -6px rgba(22,163,74,0.5)"
-                    : "0 6px 20px -6px rgba(44,34,30,0.45)",
+                    : "0 6px 20px -6px rgba(91,80,240,0.38)",
                   transition: "all 0.2s",
                 }}
               >
@@ -819,32 +819,37 @@ function RecommendationsContent() {
   ])].filter(Boolean).sort();
 
   // ── Tab button ────────────────────────────────────────────────────────────
-  const tabBtn = (label: string, count: number, tab: "jobs" | "scholarships", icon: string) => (
-    <button
-      onClick={() => setActiveTab(tab)}
-      style={{
-        padding: isMobile ? "10px 12px" : "14px 20px", fontSize: isMobile ? 13 : 16,
-        fontWeight:  activeTab === tab ? 700 : 500,
-        color:       activeTab === tab ? C.espresso : C.muted,
-        backgroundColor: "transparent",
-        border: "none",
-        borderBottom: `3px solid ${activeTab === tab ? C.espresso : "transparent"}`,
-        cursor: "pointer",
-        display: "flex", alignItems: "center", gap: 8,
-        transition: "all 0.3s ease-out",
-        whiteSpace: "nowrap" as const,
-      }}
-    >
-      <span>{icon}</span><span>{label}</span>
-      <span style={{
-        backgroundColor: activeTab === tab ? C.espresso : "#E8DED4",
-        color:           activeTab === tab ? C.cream   : C.muted,
-        borderRadius: 20, padding: "1px 9px", fontSize: 13, fontWeight: 700,
-      }}>
-        {count}
-      </span>
-    </button>
-  );
+  const tabBtn = (label: string, count: number, tab: "jobs" | "scholarships", icon: string) => {
+    const isActive = activeTab === tab;
+    return (
+      <button
+        onClick={() => setActiveTab(tab)}
+        style={{
+          padding: isMobile ? "8px 14px" : "10px 18px", fontSize: isMobile ? 13 : 14,
+          fontWeight:  isActive ? 700 : 500,
+          color:       isActive ? "#FFFFFF" : C.muted,
+          background:  isActive ? "linear-gradient(135deg, #5B50F0, #7C3AED)" : "transparent",
+          border: isActive ? "none" : `1.5px solid ${C.border}`,
+          borderRadius: 99,
+          cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 8,
+          transition: "all 0.25s ease-out",
+          whiteSpace: "nowrap" as const,
+          boxShadow: isActive ? "0 4px 14px -4px rgba(91,80,240,0.4)" : "none",
+          margin: "10px 0",
+        }}
+      >
+        <span>{icon}</span><span>{label}</span>
+        <span style={{
+          backgroundColor: isActive ? "rgba(255,255,255,0.25)" : "#E8E5FF",
+          color:           isActive ? "#FFFFFF" : "#5B50F0",
+          borderRadius: 20, padding: "1px 9px", fontSize: 12, fontWeight: 700,
+        }}>
+          {count}
+        </span>
+      </button>
+    );
+  };
 
   // ── Score badge ───────────────────────────────────────────────────────────
   const scoreBadge = (score: number) => {
@@ -883,12 +888,13 @@ function RecommendationsContent() {
 
     return (
       <div className="fade-in" style={{
-        backgroundColor: "#F9F7F4",
+        backgroundColor: "#FFFFFF",
         borderRadius: 24,
         border: `1px solid ${C.border}`,
         padding: isMobile ? "18px 16px" : "28px 28px",
         display: "flex", gap: isMobile ? 14 : 22, alignItems: "flex-start", flexWrap: "wrap",
-        transition: "border-color 0.3s ease-out",
+        transition: "border-color 0.3s ease-out, box-shadow 0.3s ease-out",
+        boxShadow: "0 2px 12px rgba(30,27,75,0.05)",
       }}>
         {/* Left — job details */}
         <div style={{ flex: "1 1 300px", minWidth: 0 }}>
@@ -967,11 +973,11 @@ function RecommendationsContent() {
                   return (
                     <span key={skill} style={{
                       padding: "4px 12px", borderRadius: 99, fontSize: 12, fontWeight: 600,
-                      backgroundColor: matched ? "#EDE8E3" : "#F4F4F5",
-                      color:           matched ? C.espresso : "#71717A",
-                      border: `1px solid ${matched ? C.border : "#E4E4E7"}`,
+                      backgroundColor: matched ? "#DCFCE7" : "#F1F0FF",
+                      color:           matched ? "#15803D" : "#5B50F0",
+                      border: `1px solid ${matched ? "#86EFAC" : "#C7D2FE"}`,
                     }}>
-                      {matched && "✓ "}{skill}
+                      {matched ? "✓ " : ""}{skill}
                     </span>
                   );
                 })}
@@ -1106,12 +1112,13 @@ function RecommendationsContent() {
   // ── Scholarship card ──────────────────────────────────────────────────────
   const ScholarshipCard = ({ sch }: { sch: Scholarship }) => (
     <div className="fade-in" style={{
-      backgroundColor: "#F9F7F4",
+      backgroundColor: "#FFFFFF",
       borderRadius: 24,
       border: `1px solid ${C.border}`,
       padding: isMobile ? "18px 16px" : "28px 28px",
       display: "flex", gap: isMobile ? 14 : 22, alignItems: "flex-start", flexWrap: "wrap",
-      transition: "border-color 0.3s ease-out",
+      transition: "border-color 0.3s ease-out, box-shadow 0.3s ease-out",
+      boxShadow: "0 2px 12px rgba(30,27,75,0.05)",
     }}>
       <div style={{ flex: "1 1 300px", minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
@@ -1196,13 +1203,13 @@ function RecommendationsContent() {
         backgroundColor: C.cream,
         display: "flex",
         flexDirection: "column",
-        backgroundImage: "radial-gradient(ellipse 60% 35% at 80% -5%, rgba(201,180,155,0.12) 0%, transparent 65%)",
+        backgroundImage: "radial-gradient(ellipse 60% 35% at 80% -5%, rgba(91,80,240,0.08) 0%, transparent 65%)",
       }}>
 
         {/* ── Floating controls ── */}
         <button
           onClick={() => router.push("/upload-cv")}
-          className="fixed z-50 bg-white/80 backdrop-blur-md border border-[#E6DFD5] text-[#2C221E] rounded-full font-medium shadow-sm transition-all hover:bg-white"
+          className="fixed z-50 bg-white/80 backdrop-blur-md border border-[#E2E1F5] text-[#1E1B4B] rounded-full font-medium shadow-sm transition-all hover:bg-white"
           style={{ cursor: "pointer", top: isMobile ? 12 : 22, left: isMobile ? 12 : 22, padding: isMobile ? "6px 12px" : "8px 16px", fontSize: isMobile ? 12 : 14 }}
         >
           {t.back}
@@ -1216,7 +1223,7 @@ function RecommendationsContent() {
             backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
             border: `1px solid ${C.border}`,
             color: C.espresso, fontSize: isMobile ? 11 : 13, fontWeight: 700, cursor: "pointer",
-            boxShadow: "0 4px 16px rgba(44,34,30,0.08)",
+            boxShadow: "0 4px 16px rgba(30,27,75,0.08)",
             transition: "all 0.2s ease-out",
           }}
         >
@@ -1226,25 +1233,67 @@ function RecommendationsContent() {
         {/* Profile summary bar — top padding clears the floating button */}
         <div style={{ backgroundColor: C.cream, borderBottom: `1px solid ${C.border}`, paddingTop: isMobile ? 52 : 72 }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "0 14px 16px" : "0 24px 20px" }}>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em" }}>Your Profile</p>
-            <h1 style={{ margin: "5px 0 0", fontSize: isMobile ? 20 : 26, fontWeight: 800, color: C.espresso, letterSpacing: "-0.025em" }}>{cv.primaryDomain}</h1>
-            <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {[
-                `🎓 ${cv.educationLevel || "Education not set"}`,
-                `📅 ${cv.experienceYears} yrs experience`,
-                `🛠 ${cv.skills.length} skills`,
-              ].map(tag => (
-                <span key={tag} style={{
-                  padding: "4px 14px", backgroundColor: "#EDE8E3",
-                  color: C.espresso, borderRadius: 99, fontSize: 13, fontWeight: 600,
-                }}>
-                  {tag}
-                </span>
-              ))}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: isMobile ? 16 : 28, flexWrap: "wrap" }}>
+              {/* ATS Score Ring */}
+              {(() => {
+                const atsScore = Math.min(98, Math.round(
+                  40 +
+                  Math.min(cv.skills.length * 2.5, 28) +
+                  Math.min(cv.experienceYears * 3, 18) +
+                  (/phd|doctorate/i.test(cv.educationLevel) ? 12 :
+                   /master|mba|msc/i.test(cv.educationLevel) ? 9 :
+                   /bachelor|bsc/i.test(cv.educationLevel) ? 6 : 3)
+                ));
+                const r = 28;
+                const circ = 2 * Math.PI * r;
+                const offset = circ * (1 - atsScore / 100);
+                const ringColor = atsScore >= 80 ? "#059669" : atsScore >= 65 ? "#D97706" : "#5B50F0";
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                    <svg width={isMobile ? 64 : 76} height={isMobile ? 64 : 76} viewBox="0 0 76 76">
+                      <circle cx="38" cy="38" r={r} fill="none" stroke="#E2E1F5" strokeWidth="6"/>
+                      <circle cx="38" cy="38" r={r} fill="none" stroke={ringColor} strokeWidth="6"
+                        strokeDasharray={circ} strokeDashoffset={offset}
+                        strokeLinecap="round"
+                        transform="rotate(-90 38 38)"
+                      />
+                      <text x="38" y="42" textAnchor="middle" fontSize={isMobile ? "13" : "14"} fontWeight="800" fill="#1E1B4B">{atsScore}</text>
+                    </svg>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: "#5B50F0", letterSpacing: "0.16em", textTransform: "uppercase" }}>ATS Score</p>
+                      <p style={{ margin: "1px 0 0", fontSize: isMobile ? 17 : 20, fontWeight: 900, color: "#1E1B4B", lineHeight: 1.1 }}>{atsScore}<span style={{ fontSize: 12, fontWeight: 600, color: "#64748B" }}>/100</span></p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748B" }}>
+                        {atsScore >= 80 ? "Excellent" : atsScore >= 65 ? "Good" : "Needs work"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Profile info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em" }}>Your Profile</p>
+                <h1 style={{ margin: "4px 0 0", fontSize: isMobile ? 20 : 26, fontWeight: 800, color: C.espresso, letterSpacing: "-0.025em" }}>{cv.primaryDomain}</h1>
+                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {[
+                    `🎓 ${cv.educationLevel || "Education not set"}`,
+                    `📅 ${cv.experienceYears} yrs experience`,
+                    `🛠 ${cv.skills.length} skills`,
+                  ].map(tag => (
+                    <span key={tag} style={{
+                      padding: "4px 12px", backgroundColor: "#EEEEFF",
+                      color: C.espresso, borderRadius: 99, fontSize: 12, fontWeight: 600,
+                      border: "1px solid #D4D0FA",
+                    }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                {cv.bio && (
+                  <p style={{ margin: "8px 0 0", fontSize: 13, color: C.muted, lineHeight: 1.65, maxWidth: 700 }}>{cv.bio}</p>
+                )}
+              </div>
             </div>
-            {cv.bio && (
-              <p style={{ margin: "10px 0 0", fontSize: 13, color: C.muted, lineHeight: 1.65, maxWidth: 700 }}>{cv.bio}</p>
-            )}
           </div>
         </div>
 
@@ -1265,7 +1314,7 @@ function RecommendationsContent() {
                     border: `1.5px solid ${countryFilter !== "all" ? C.espresso : C.border}`,
                     borderRadius: 99, padding: "5px 12px", outline: "none",
                     color: countryFilter !== "all" ? C.espresso : C.muted,
-                    backgroundColor: countryFilter !== "all" ? "#EDE8E3" : "transparent",
+                    backgroundColor: countryFilter !== "all" ? "#EEEEFF" : "transparent",
                     transition: "all 0.2s ease-out",
                   }}
                 >
@@ -1318,7 +1367,7 @@ function RecommendationsContent() {
           )}
         </main>
 
-        <footer style={{ backgroundColor: C.espresso, color: "#C9B49B", textAlign: "center", padding: "18px 24px", fontSize: 13 }}>
+        <footer style={{ backgroundColor: "#1E1B4B", color: "#A5B4FC", textAlign: "center", padding: "18px 24px", fontSize: 13 }}>
           CV Matcher &copy; {new Date().getFullYear()} &nbsp;·&nbsp; AI-powered career guidance
         </footer>
       </div>
@@ -1328,10 +1377,10 @@ function RecommendationsContent() {
 
 function EmptyState({ label, sub }: { label: string; sub: string }) {
   return (
-    <div style={{ padding: 40, textAlign: "center", backgroundColor: "#F9F7F4", borderRadius: 20, border: `1px solid ${C.border}` }}>
+    <div style={{ padding: 40, textAlign: "center", backgroundColor: "#FFFFFF", borderRadius: 20, border: `1px solid ${C.border}`, boxShadow: "0 2px 12px rgba(30,27,75,0.05)" }}>
       <p style={{ fontSize: 20, margin: "0 0 8px" }}>🔍</p>
-      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#2C221E" }}>{label}</p>
-      <p style={{ margin: "6px 0 0", fontSize: 13, color: "#6E6560" }}>{sub}</p>
+      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.espresso }}>{label}</p>
+      <p style={{ margin: "6px 0 0", fontSize: 13, color: C.muted }}>{sub}</p>
     </div>
   );
 }
@@ -1339,8 +1388,8 @@ function EmptyState({ label, sub }: { label: string; sub: string }) {
 export default function RecommendationsPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" }}>
-        <p style={{ fontSize: 18, color: "#6B5A50" }}>Loading your results…</p>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#F0F1FF" }}>
+        <p style={{ fontSize: 18, color: "#64748B" }}>Loading your results…</p>
       </div>
     }>
       <RecommendationsContent />
