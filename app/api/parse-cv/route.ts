@@ -327,18 +327,96 @@ async function fetchRemotive(keyword: string, skills: string[]): Promise<Job[]> 
   }
 }
 
-// Tries 3 sources in sequence; returns first non-empty result
+// ── Pakistan curated jobs ─────────────────────────────────────────────────────
+
+const PK_JOBS: (Omit<Job, "matchScore"> & { domains: string[] })[] = [
+  // IT / Software
+  { id: "pitb-dev",   title: "Software Developer",            company: "PITB (Punjab IT Board)",           location: "Lahore, Pakistan",    salary: "PKR 80,000–150,000/mo", description: "Punjab IT Board regularly hires software developers for e-governance projects. Apply through their careers portal.", requiredSkills: ["software development", "web", "programming"], applyUrl: "https://pitb.gov.pk/careers", domains: ["software","tech","it","developer","programming","web","computer"] },
+  { id: "pitb-intern", title: "IT Internship (Paid)",          company: "PITB",                             location: "Lahore, Pakistan",    salary: "PKR 25,000–35,000/mo", description: "6-month paid internship program at Punjab IT Board for fresh graduates in software, AI and data fields.", requiredSkills: ["programming", "software", "it"], applyUrl: "https://pitb.gov.pk/internships", domains: ["software","tech","it","developer","data","ai","computer"] },
+  { id: "nadra-it",   title: "IT Officer / Software Engineer", company: "NADRA",                            location: "Islamabad, Pakistan", salary: "PKR 90,000–180,000/mo", description: "NADRA hires IT officers for national digital identity systems. Competitive pay with government benefits.", requiredSkills: ["software", "database", "networking"], applyUrl: "https://www.nadra.gov.pk/careers/", domains: ["software","tech","it","developer","database","computer","network"] },
+  { id: "ntc-dev",    title: "Junior Software Engineer",       company: "NTC (National Telecom Corp)",      location: "Islamabad, Pakistan", salary: "PKR 70,000–120,000/mo", description: "NTC recruits software engineers for telecom infrastructure and government communication systems.", requiredSkills: ["software engineering", "networking"], applyUrl: "https://www.ntc.net.pk/jobs/", domains: ["software","tech","it","telecom","network","engineer"] },
+  { id: "stza-dev",   title: "Software Engineer – Tech Zone",  company: "STZA (Special Tech Zones Authority)", location: "Islamabad, Pakistan", salary: "PKR 100,000–200,000/mo", description: "Work in Pakistan's Special Technology Zones — tax-exempt tech companies hiring software engineers.", requiredSkills: ["software", "web", "mobile"], applyUrl: "https://stza.gov.pk/jobs", domains: ["software","tech","developer","web","mobile","ai","computer"] },
+
+  // Finance / Accounting
+  { id: "fbr-acc",    title: "Inland Revenue Officer",         company: "FBR (Federal Board of Revenue)",   location: "Pakistan",           salary: "BPS-17 Government Scale", description: "FBR recruits via FPSC for Inland Revenue / Customs officers. Prestigious government career with pension.", requiredSkills: ["finance", "taxation", "accounting"], applyUrl: "https://fpsc.gov.pk/", domains: ["finance","accounting","economics","tax","banking","business"] },
+  { id: "sbp-off",    title: "Officer Grade II / III",         company: "State Bank of Pakistan",           location: "Karachi / Lahore",   salary: "PKR 120,000–200,000/mo", description: "SBP hires economics and finance graduates for banking regulation, monetary policy and research roles.", requiredSkills: ["economics", "finance", "banking", "research"], applyUrl: "https://www.sbp.org.pk/careers.asp", domains: ["finance","economics","banking","business","accounting","research"] },
+
+  // Engineering
+  { id: "wapda-eng",  title: "Junior Engineer",                company: "WAPDA",                            location: "Pakistan",           salary: "BPS-17 Government Scale", description: "WAPDA recruits civil, electrical and mechanical engineers for power infrastructure across Pakistan.", requiredSkills: ["electrical engineering", "civil engineering", "mechanical"], applyUrl: "https://www.wapda.gov.pk/index.php/careers", domains: ["engineering","electrical","civil","mechanical","energy","power"] },
+  { id: "nespak-eng", title: "Civil / Structural Engineer",    company: "NESPAK",                           location: "Lahore, Pakistan",   salary: "PKR 100,000–180,000/mo", description: "National Engineering Services Pakistan — largest consulting firm. Hiring civil, structural and environmental engineers.", requiredSkills: ["civil engineering", "structural", "design"], applyUrl: "https://www.nespak.com.pk/careers", domains: ["engineering","civil","structural","mechanical","construction"] },
+  { id: "pnsc-eng",   title: "Marine / Mechanical Engineer",   company: "PNSC",                             location: "Karachi, Pakistan",  salary: "PKR 80,000–150,000/mo", description: "Pakistan National Shipping Corporation hires marine, mechanical and electrical engineers.", requiredSkills: ["mechanical engineering", "marine", "electrical"], applyUrl: "https://www.pnsc.com.pk/careers/", domains: ["engineering","mechanical","marine","electrical","naval"] },
+
+  // Health / Medical
+  { id: "pmdc-doc",   title: "Medical Officer (Govt Hospital)", company: "Punjab Health Department",         location: "Punjab, Pakistan",   salary: "BPS-17 Government Scale", description: "Punjab health department recruits MBBS doctors as Medical Officers across district hospitals.", requiredSkills: ["mbbs", "clinical", "medicine"], applyUrl: "https://phd.punjab.gov.pk/careers", domains: ["medicine","health","medical","mbbs","doctor","clinical","pharmacy"] },
+  { id: "nih-res",    title: "Research Officer / Lab Officer",  company: "NIH (National Inst. of Health)",   location: "Islamabad, Pakistan", salary: "BPS-17 Government Scale", description: "NIH Islamabad recruits medical researchers, lab officers and public health professionals.", requiredSkills: ["research", "microbiology", "public health"], applyUrl: "https://www.nih.org.pk/careers/", domains: ["medicine","health","biology","research","pharmacy","microbiology","public health"] },
+
+  // Education
+  { id: "hec-res",    title: "Research Associate / Lecturer",   company: "HEC-Funded Universities",          location: "Pakistan",           salary: "PKR 60,000–120,000/mo", description: "HEC-funded universities regularly advertise lecturer and research associate positions nationwide.", requiredSkills: ["teaching", "research", "academia"], applyUrl: "https://www.hec.gov.pk/english/facdev/Pages/Opportunities.aspx", domains: ["education","teaching","academia","research","lecturer"] },
+
+  // Business / Management
+  { id: "pbs-off",    title: "Statistical Officer",             company: "PBS (Pakistan Bureau of Statistics)", location: "Islamabad",       salary: "BPS-17 Government Scale", description: "PBS recruits statistics and economics graduates for national data collection and analysis.", requiredSkills: ["statistics", "economics", "data analysis"], applyUrl: "https://fpsc.gov.pk/", domains: ["business","management","economics","statistics","data","finance","research"] },
+
+  // Law
+  { id: "fpsc-law",   title: "Law Officer / Legal Advisor",     company: "Federal Government (via FPSC)",    location: "Pakistan",           salary: "BPS-17 Government Scale", description: "Federal ministries recruit law officers through FPSC for legal, compliance and advisory roles.", requiredSkills: ["law", "legal", "compliance"], applyUrl: "https://fpsc.gov.pk/", domains: ["law","legal","advocate","lawyer","compliance","llb"] },
+
+  // General Government
+  { id: "css-off",    title: "CSS Officer (All Departments)",    company: "Federal Government",               location: "Pakistan",           salary: "BPS-17–22 Government Scale", description: "Central Superior Services — elite government positions across all sectors. Apply via FPSC every year.", requiredSkills: ["general knowledge", "administration", "management"], applyUrl: "https://fpsc.gov.pk/", domains: ["all"] },
+  { id: "ppsc-off",   title: "Government Officer (Punjab)",      company: "PPSC",                             location: "Punjab, Pakistan",   salary: "BPS-17 Government Scale", description: "Punjab Public Service Commission recruits officers across education, health, finance and admin departments.", requiredSkills: ["general", "administration"], applyUrl: "https://www.ppsc.gop.pk/", domains: ["all"] },
+];
+
+function getPakistaniJobs(domain: string, skills: string[]): Job[] {
+  const d = domain.toLowerCase();
+  const s = skills.map(x => x.toLowerCase()).join(" ");
+  const combined = d + " " + s;
+
+  const matched = PK_JOBS.filter(j =>
+    j.domains[0] === "all" ||
+    j.domains.some(dom => combined.includes(dom) || dom.includes(d.split(" ")[0]))
+  );
+
+  const pool = matched.length >= 2 ? matched : [
+    ...matched,
+    ...PK_JOBS.filter(j => j.domains[0] === "all"),
+  ];
+
+  const userSkills = skills.map(x => x.toLowerCase());
+  return pool
+    .slice(0, 8)
+    .map((j): Job => {
+      const skillMatches = j.requiredSkills.filter(rs =>
+        userSkills.some(us => us.includes(rs.toLowerCase()) || rs.toLowerCase().includes(us))
+      ).length;
+      const score = Math.min(93, 62 + skillMatches * 8 + (j.domains[0] !== "all" ? 10 : 0));
+      return { ...j, matchScore: score };
+    })
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, 4);
+}
+
+// Tries 3 sources in sequence; merges Pakistani jobs in
 async function fetchRealJobs(domain: string, skills: string[]): Promise<Job[]> {
   const { tag, keyword } = domainToKeywords(domain, skills);
+  const pkJobs = getPakistaniJobs(domain, skills);
 
-  const remoteOK = await fetchRemoteOK(tag, skills);
-  if (remoteOK.length >= 3) return remoteOK;
+  const [remoteOK, arbeitnow, remotive] = await Promise.allSettled([
+    fetchRemoteOK(tag, skills),
+    fetchArbeitnow(keyword, skills),
+    fetchRemotive(keyword, skills),
+  ]);
 
-  const arbeitnow = await fetchArbeitnow(keyword, skills);
-  if (arbeitnow.length >= 3) return arbeitnow;
+  const international =
+    (remoteOK.status === "fulfilled" && remoteOK.value.length >= 2 ? remoteOK.value :
+    arbeitnow.status === "fulfilled" && arbeitnow.value.length >= 2 ? arbeitnow.value :
+    remotive.status  === "fulfilled" ? remotive.value : []).slice(0, 6);
 
-  const remotive = await fetchRemotive(keyword, skills);
-  return remotive;
+  // Mix: Pakistani jobs first, then international
+  const combined = [...pkJobs, ...international];
+  const seen = new Set<string>();
+  return combined.filter(j => {
+    if (seen.has(j.title + j.company)) return false;
+    seen.add(j.title + j.company);
+    return true;
+  }).slice(0, 10);
 }
 
 // ── Step 3: Real curated scholarships ─────────────────────────────────────────
@@ -356,23 +434,45 @@ const SCHOLARSHIPS = [
   { id: "google",title: "Google PhD Fellowship",                    university: "Partner Universities",    country: "Global",          amount: "Fully Funded", description: "Supports outstanding PhD students in Computer Science, AI, Machine Learning and related engineering fields.", applyUrl: "https://research.google/programs-and-events/phd-fellowship/", domains: ["software", "data", "computer", "engineering", "ai", "machine learning", "developer"] },
   { id: "wb",    title: "World Bank McNamara Fellowship",           university: "Partner Universities",    country: "Global",          amount: "Fully Funded", description: "Supports PhD students from developing countries in development economics, finance and public policy research.", applyUrl: "https://www.worldbank.org/en/programs/scholarships", domains: ["finance", "economics", "business", "development", "policy", "management"] },
   { id: "who",   title: "WHO Special Programme Fellowships",        university: "Global Institutions",     country: "Global",          amount: "Fully Funded", description: "WHO fellowships for public health training and research — strengthening global health capacity.", applyUrl: "https://www.who.int/about/education/fellowships", domains: ["medicine", "health", "nursing", "pharmacy", "biology", "medical"] },
+
+  // ── Pakistani Scholarships & Internships ──────────────────────────────────────
+  { id: "hec-nb",   title: "HEC Need-Based Scholarship",               university: "Pakistani Universities",  country: "Pakistan",        amount: "PKR 50,000–120,000/yr", description: "HEC Need-Based Scholarships for deserving undergraduate students at universities across Pakistan. Apply through your university.", applyUrl: "https://www.hec.gov.pk/english/scholarshipsHP/Pages/NBS.aspx", domains: ["all"] },
+  { id: "peef",     title: "PEEF Scholarship (Punjab)",                 university: "Punjab Universities",     country: "Pakistan",        amount: "PKR 60,000–100,000/yr", description: "Punjab Education Endowment Fund provides merit-cum-need scholarships for undergraduate students from low-income families in Punjab.", applyUrl: "https://peef.org.pk/scholarships/", domains: ["all"] },
+  { id: "ehsaas",   title: "Ehsaas Undergraduate Scholarship",          university: "Pakistani Universities",  country: "Pakistan",        amount: "PKR 64,000/yr + boarding", description: "Government of Pakistan's flagship scholarship for talented students from low-income families — covers tuition and boarding.", applyUrl: "https://ehsaas.punjab.gov.pk/", domains: ["all"] },
+  { id: "pm-youth", title: "Prime Minister's Youth Laptop Scheme",      university: "Pakistani Universities",  country: "Pakistan",        amount: "Free Laptop", description: "PM Youth Programme distributes laptops to top-performing university students to support digital education.", applyUrl: "https://pmyp.gov.pk/", domains: ["software","tech","it","computer","engineering","science","data"] },
+  { id: "pitb-int", title: "PITB Governor's Initiative Internship",     university: "PITB / Govt of Punjab",   country: "Pakistan",        amount: "PKR 30,000/mo stipend", description: "Paid 6-month internship for IT and CS graduates under the Governor's Initiative — work on e-governance projects.", applyUrl: "https://pitb.gov.pk/internships", domains: ["software","tech","it","computer","developer","data","ai","engineering"] },
+  { id: "navttc",   title: "NAVTTC Free IT & Technical Courses",        university: "NAVTTC Pakistan",         country: "Pakistan",        amount: "Free Training + Stipend", description: "National Vocational and Technical Training Commission offers free short courses with monthly stipends in IT, trades and business.", applyUrl: "https://navttc.gov.pk/", domains: ["software","tech","it","engineering","vocational","technical","business"] },
+  { id: "ignite",   title: "Ignite Startup/Research Grants",            university: "HEC / Ignite",            country: "Pakistan",        amount: "Up to PKR 10M", description: "Ignite (formerly NRPU) funds tech startups, research projects and digital innovation for Pakistani graduates and researchers.", applyUrl: "https://ignite.org.pk/", domains: ["software","tech","it","research","data","ai","engineering","startup","innovation"] },
+  { id: "km-sch",   title: "Khyber Medical University Scholarship",     university: "KMU Peshawar",            country: "Pakistan",        amount: "Tuition waiver", description: "KMU offers merit and need-based scholarships for medical and allied health sciences students in KPK.", applyUrl: "https://www.kmu.edu.pk/", domains: ["medicine","health","medical","mbbs","pharmacy","dentistry","nursing"] },
+  { id: "aku-sch",  title: "Aga Khan University Financial Aid",         university: "Aga Khan University",    country: "Pakistan",        amount: "Up to 100% tuition", description: "AKU offers extensive financial aid and scholarships for undergraduate and postgraduate students in health and education.", applyUrl: "https://www.aku.edu/admissions/financial-assistance/Pages/home.aspx", domains: ["medicine","health","medical","education","nursing","pharmacy","biology"] },
+  { id: "lums-fa",  title: "LUMS National Outreach Programme",          university: "LUMS",                    country: "Pakistan",        amount: "Fully Funded", description: "LUMS National Outreach Programme — fully funded undergraduate scholarships for exceptional students from all over Pakistan.", applyUrl: "https://nop.lums.edu.pk/", domains: ["all"] },
+  { id: "iiui-sch", title: "IIUI Merit Scholarship",                    university: "International Islamic University Islamabad", country: "Pakistan", amount: "50–100% fee waiver", description: "IIUI offers merit scholarships for top students across engineering, law, social sciences and Islamic studies.", applyUrl: "https://www.iiu.edu.pk/index.php/scholarships", domains: ["all"] },
 ];
+
+const PK_SCHOLARSHIP_IDS = new Set(["hec-nb","peef","ehsaas","pm-youth","pitb-int","navttc","ignite","km-sch","aku-sch","lums-fa","iiui-sch"]);
 
 function getScholarships(domain: string, educationLevel: string): Scholarship[] {
   const d   = domain.toLowerCase();
   const edu = educationLevel.toLowerCase();
   const eduBonus = /master|msc|mba|phd|doctorate/.test(edu) ? 8 : /bachelor|bsc/.test(edu) ? 5 : 0;
 
-  return SCHOLARSHIPS
-    .filter(s => s.domains[0] === "all" || s.domains.some(sd => d.includes(sd) || sd.includes(d.split(" ")[0])))
-    .map((s): Scholarship => ({
-      id: s.id, title: s.title, university: s.university,
-      country: s.country, amount: s.amount, description: s.description,
-      applyUrl: s.applyUrl,
-      matchScore: Math.min(95, (s.domains[0] === "all" ? 70 : 86) + eduBonus + Math.floor(Math.random() * 5)),
-    }))
-    .sort((a, b) => b.matchScore - a.matchScore)
-    .slice(0, 4);
+  const scored = SCHOLARSHIPS.map((s): Scholarship => ({
+    id: s.id, title: s.title, university: s.university,
+    country: s.country, amount: s.amount, description: s.description,
+    applyUrl: s.applyUrl,
+    matchScore: Math.min(95,
+      (s.domains[0] === "all" ? 68 : 85) +
+      eduBonus +
+      (s.domains.some(sd => d.includes(sd) || sd.includes(d.split(" ")[0])) ? 8 : 0) +
+      Math.floor(Math.random() * 5)
+    ),
+  }));
+
+  // Always include 3 Pakistani + 3 international
+  const pk   = scored.filter(s => PK_SCHOLARSHIP_IDS.has(s.id)).sort((a, b) => b.matchScore - a.matchScore).slice(0, 4);
+  const intl = scored.filter(s => !PK_SCHOLARSHIP_IDS.has(s.id)).sort((a, b) => b.matchScore - a.matchScore).slice(0, 4);
+
+  return [...pk, ...intl].slice(0, 8);
 }
 
 // ── PDF / DOCX / TXT extraction ───────────────────────────────────────────────
