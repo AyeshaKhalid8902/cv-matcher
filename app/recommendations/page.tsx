@@ -22,6 +22,7 @@ type Job = {
   description:    string;
   requiredSkills: string[];
   matchScore:     number;
+  applyUrl?:      string;
 };
 
 type Scholarship = {
@@ -32,6 +33,7 @@ type Scholarship = {
   amount:      string;
   description: string;
   matchScore:  number;
+  applyUrl?:   string;
 };
 
 type ModalState = {
@@ -1046,6 +1048,20 @@ function RecommendationsContent() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, minWidth: isMobile ? 86 : 108 }}>
           {scoreBadge(job.matchScore ?? 75)}
 
+          {job.applyUrl && (
+            <a
+              href={job.applyUrl}
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                display: "block", width: "100%", padding: "9px 10px",
+                backgroundColor: "#15803D", color: C.white,
+                borderRadius: 10, fontSize: 12, fontWeight: 700,
+                textAlign: "center", textDecoration: "none",
+              }}
+            >
+              ✅ Apply
+            </a>
+          )}
           <a
             href={`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title)}&location=${encodeURIComponent(job.location)}`}
             target="_blank" rel="noopener noreferrer"
@@ -1129,7 +1145,7 @@ function RecommendationsContent() {
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, minWidth: isMobile ? 86 : 108 }}>
         {scoreBadge(sch.matchScore ?? 75)}
         <a
-          href={`https://www.google.com/search?q=${encodeURIComponent(sch.title + " " + sch.university + " apply")}`}
+          href={sch.applyUrl ?? `https://www.google.com/search?q=${encodeURIComponent(sch.title + " " + sch.university + " apply")}`}
           target="_blank" rel="noopener noreferrer"
           style={{
             display: "block", width: "100%", padding: "9px 10px",
